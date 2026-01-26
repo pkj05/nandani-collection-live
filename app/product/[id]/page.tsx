@@ -1,36 +1,66 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation"; // useRouter joda gaya checkout ke liye
-import { ShoppingBag, Heart, Truck, RotateCcw, ShieldCheck, Star, CreditCard, Loader2 } from "lucide-react";
-// 1. Store Import kiya
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation"; 
+import { ShoppingBag, Heart, Truck, RotateCcw, CreditCard, Loader2, ZoomIn, ZoomOut, Play, X } from "lucide-react";
+
+// Swiper & Pinch Zoom Library Imports
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import QuickPinchZoom, { make3dTransformValue } from "react-quick-pinch-zoom";
+
+// Cart Store Import
 import { useCartStore } from "@/store/useCartStore";
 
 export default function ProductDetail() {
-  const params = useParams(); // ID nikalne ke liye
-  const router = useRouter(); // Navigation ke liye
+  const params = useParams(); 
+  const router = useRouter(); 
   const productId = params.id;
-
-  // 2. Store se addItem function nikala
   const addItem = useCartStore((state) => state.addItem);
 
-  // --- Dynamic State ---
+  // --- Dynamic States ---
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [zoomStyle, setZoomStyle] = useState({ display: 'none', backgroundPosition: '0% 0%', left: 0, top: 0 });
+  const [showVideo, setShowVideo] = useState(false);
+  const [swiperInstance, setSwiperInstance] = useState<any>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
   
-  const imageRef = useRef<HTMLDivElement>(null);
+  const pzRefs = useRef<any[]>([]);
+  const imgRefs = useRef<any[]>([]);
 
-  // --- Backend se data mangana ---
+  // Smooth Pan Fix Logic: scale > 1 par swipe lock aur free movement
+  const onUpdate = useCallback((index: number) => ({ x, y, scale }: any) => {
+    const img = imgRefs.current[index];
+    if (img) {
+      const value = make3dTransformValue({ x, y, scale });
+      img.style.setProperty("transform", value);
+      
+      // Swiper touch control based on zoom
+      if (scale > 1.05) {
+        setIsZoomed(true);
+        if (swiperInstance) {
+          swiperInstance.allowTouchMove = false;
+          if (swiperInstance.autoplay) swiperInstance.autoplay.stop();
+        }
+      } else {
+        setIsZoomed(false);
+        if (swiperInstance) swiperInstance.allowTouchMove = true;
+      }
+    }
+  }, [swiperInstance]);
+
+  // Backend se data mangana (Laptop IP: 192.168.1.7)
   useEffect(() => {
     const fetchProductDetails = async () => {
       try {
         const response = await fetch(`http://192.168.1.7:8000/api/products?id=${productId}`);
         const data = await response.json();
-        
         if (Array.isArray(data) && data.length > 0) {
           const item = data[0];
           setProduct(item);
@@ -38,195 +68,167 @@ export default function ProductDetail() {
           setSelectedColor(item.color);
         }
       } catch (error) {
-        console.error("Product detail fetch error:", error);
+        console.error("Fetch error:", error);
       } finally {
         setLoading(false);
       }
     };
-
     if (productId) fetchProductDetails();
   }, [productId]);
 
-  // Related Products (Inhe filhaal fake rakhte hain, baad mein dynamic karenge)
-  const relatedProducts = [
-    { id: 2, name: "Ruby Red Suit", price: "₹3,499", image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?q=80&w=2670&auto=format&fit=crop" },
-    { id: 3, name: "Green Silk Saree", price: "₹5,299", image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=2574&auto=format&fit=crop" },
-    { id: 4, name: "Cotton Pink Kurti", price: "₹1,299", image: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?q=80&w=2574&auto=format&fit=crop" },
-    { id: 5, name: "Party Wear Suit", price: "₹4,999", image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?q=80&w=2534&auto=format&fit=crop" },
-  ];
-
-  // 3. Button Click handle karne ka function
-  const handleAddToCart = (p = product) => {
-    if (!p) return;
-    addItem({
-      id: p.id,
-      name: p.name,
-      price: `₹${p.selling_price || p.price}`, // Dynamic price from DB
-      image: p.thumbnail || p.image,
-      size: selectedSize,
-      color: selectedColor,
-      quantity: quantity,
-    });
-  };
-
-  // 4. BUY NOW handle karne ka function
-  const handleBuyNow = () => {
-    if (!product) return;
-    
-    // Pehle item ko cart mein add karein
-    handleAddToCart();
-    
-    // Phir seedha checkout page par bhej dein
-    router.push("/checkout");
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!imageRef.current) return;
-    const { left, top, width, height } = imageRef.current.getBoundingClientRect();
-    const xPos = e.clientX - left;
-    const yPos = e.clientY - top;
-    const xPercent = (xPos / width) * 100;
-    const yPercent = (yPos / height) * 100;
-
-    setZoomStyle({ display: 'block', backgroundPosition: `${xPercent}% ${yPercent}%`, left: xPos, top: yPos });
+  // Manual Zoom Buttons Logic
+  const handleManualZoom = (type: 'in' | 'out') => {
+    const activeIndex = swiperInstance?.activeIndex || 0;
+    const currentPz = pzRefs.current[activeIndex];
+    if (currentPz) {
+      if (type === 'in') currentPz.scaleTo({ scale: 3, x: 0, y: 0 });
+      else currentPz.scaleTo({ scale: 1, x: 0, y: 0 });
+    }
   };
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white">
       <Loader2 className="animate-spin text-primary" size={48} />
-      <p className="font-medium text-gray-500 font-serif">Nandani Collection: Loading Details...</p>
+      <p className="font-serif text-gray-400">Nandani Collection Loading...</p>
     </div>
   );
 
-  if (!product) return <div className="text-center py-20 text-xl font-serif">Product Not Found!</div>;
+  if (!product) return <div className="text-center py-20 font-serif">Product Not Found!</div>;
+
+  const allImages = [product.thumbnail, ...(product.images?.map((img: any) => img.image) || [])];
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start mb-24">
+    <div className="bg-white min-h-screen font-sans">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
           
-          {/* IMAGE SECTION */}
-          <div 
-            className="relative h-[650px] rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 cursor-none shadow-sm group"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setZoomStyle(prev => ({ ...prev, display: 'none' }))}
-            ref={imageRef}
-          >
-            <img src={product.thumbnail} alt={product.name} className="w-full h-full object-cover" />
-            <div 
-              className="absolute pointer-events-none border-4 border-white shadow-2xl rounded-full w-52 h-52 overflow-hidden z-10"
-              style={{
-                display: zoomStyle.display,
-                left: zoomStyle.left,
-                top: zoomStyle.top,
-                transform: 'translate(-50%, -50%)',
-                backgroundImage: `url(${product.thumbnail})`,
-                backgroundPosition: zoomStyle.backgroundPosition,
-                backgroundSize: '350%',
-                backgroundRepeat: 'no-repeat',
-              }}
-            ></div>
+          {/* IMAGE SECTION - Swiper with Pinch-Zoom */}
+          <div className="relative rounded-3xl overflow-hidden bg-gray-100 h-[550px] md:h-[750px] shadow-sm">
+            {!showVideo ? (
+              <>
+                <Swiper
+                  modules={[Navigation, Pagination, Autoplay]}
+                  onSwiper={setSwiperInstance}
+                  spaceBetween={0}
+                  slidesPerView={1}
+                  navigation={!isZoomed}
+                  pagination={{ clickable: true }}
+                  autoplay={isZoomed ? false : { delay: 4000, disableOnInteraction: true }}
+                  className="w-full h-full"
+                >
+                  {allImages.map((img, index) => (
+                    <SwiperSlide key={index}>
+                      <QuickPinchZoom 
+                        ref={(el) => (pzRefs.current[index] = el)} 
+                        onUpdate={onUpdate(index)} 
+                        draggableUnZoomed={false}
+                        enforceBounds={false} // Free Pan lock hataya gaya
+                        containerProps={{
+                          style: { width: "100%", height: "100%" }
+                        }}
+                      >
+                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                          <img 
+                            ref={(el) => (imgRefs.current[index] = el)}
+                            src={img} 
+                            alt={`${product.name}-${index}`} 
+                            className="w-full h-full object-cover pointer-events-none" // cover for edge-to-edge pan
+                            style={{ willChange: "transform" }}
+                          />
+                        </div>
+                      </QuickPinchZoom>
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+
+                {/* Zoom Control Buttons */}
+                <div className="absolute top-6 right-6 z-40 flex flex-col gap-4">
+                  <button onClick={() => handleManualZoom('in')} className="p-4 bg-white/90 rounded-2xl shadow-2xl text-black active:scale-90 transition-all border border-gray-100"><ZoomIn size={24} /></button>
+                  <button onClick={() => handleManualZoom('out')} className="p-4 bg-white/90 rounded-2xl shadow-2xl text-black active:scale-90 transition-all border border-gray-100"><ZoomOut size={24} /></button>
+                </div>
+
+                {/* Video Option */}
+                {product.video && (
+                  <button 
+                    onClick={() => setShowVideo(true)}
+                    className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-black text-white px-8 py-4 rounded-full shadow-2xl font-bold active:scale-95 transition-all"
+                  >
+                    <Play size={20} fill="white" /> Watch Product Video
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full bg-black relative flex items-center justify-center">
+                <video src={product.video} controls autoPlay className="max-h-full w-full" />
+                <button onClick={() => setShowVideo(false)} className="absolute top-6 right-6 z-50 bg-white p-2 rounded-full text-black shadow-xl"><X size={28} /></button>
+              </div>
+            )}
           </div>
 
           {/* DETAILS SECTION */}
-          <div className="flex flex-col">
-            <div className="mb-6">
-              <h1 className="text-4xl font-serif font-bold text-gray-900 mb-2">{product.name}</h1>
-              <div className="flex items-center gap-4">
-                <p className="text-3xl font-bold text-primary">₹{product.selling_price.toLocaleString()}</p>
-                <p className="text-xl text-gray-400 line-through">₹{product.original_price.toLocaleString()}</p>
+          <div className="flex flex-col space-y-8 py-4">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">{product.name}</h1>
+              <div className="flex items-center gap-6">
+                <p className="text-4xl font-bold text-primary">₹{product.selling_price?.toLocaleString()}</p>
+                <p className="text-2xl text-gray-400 line-through font-light italic">₹{product.original_price?.toLocaleString()}</p>
               </div>
             </div>
 
-            <p className="text-gray-600 leading-relaxed mb-8">{product.description}</p>
+            <p className="text-gray-600 leading-relaxed text-xl font-light">{product.description}</p>
 
-            {/* Colors Section (Using DB Data) */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Color: {selectedColor}</h3>
-              <div className="flex gap-4">
-                <button className={`w-10 h-10 rounded-full border-2 p-0.5 border-primary scale-110`}>
-                  <div className="w-full h-full rounded-full" style={{ backgroundColor: product.color.toLowerCase() }}></div>
-                </button>
-              </div>
-            </div>
-
-            {/* Sizes Section (Using DB Data) */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Size: {selectedSize}</h3>
-              <div className="flex gap-3">
-                <button className="w-12 h-12 flex items-center justify-center rounded-lg border-2 border-primary bg-primary text-white font-medium">{product.size}</button>
-              </div>
-            </div>
-
-            {/* ACTIONS */}
-            <div className="flex gap-6 mb-10">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center border-2 border-gray-200 rounded-lg h-14 w-32">
-                  <button onClick={() => quantity > 1 && setQuantity(quantity-1)} className="flex-1 text-xl">-</button>
-                  <span className="px-2 font-bold text-lg">{quantity}</span>
-                  <button onClick={() => setQuantity(quantity+1)} className="flex-1 text-xl">+</button>
+            {/* Attributes Selection */}
+            <div className="flex gap-12">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Color</h3>
+                <div className="w-14 h-14 rounded-full border-2 border-primary p-1">
+                  <div className="w-full h-full rounded-full shadow-inner" style={{ backgroundColor: product.color?.toLowerCase() || 'gray' }}></div>
                 </div>
-                <button className="h-14 w-32 border-2 border-gray-200 rounded-lg flex items-center justify-center group">
-                  <Heart size={24} className="text-gray-400 group-hover:text-red-500" />
-                </button>
               </div>
-
-              <div className="flex-1 flex flex-col gap-4">
-                <button 
-                  onClick={() => handleAddToCart()} 
-                  className="h-14 border-2 border-gray-900 text-gray-900 rounded-lg font-bold flex items-center justify-center gap-3 hover:bg-gray-900 hover:text-white transition-all"
-                >
-                  <ShoppingBag size={20} /> Add to Cart
-                </button>
-                {/* BUY NOW BUTTON ENABLED */}
-                <button 
-                  onClick={handleBuyNow}
-                  className="h-14 bg-primary text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-lg hover:opacity-90 transition-all active:scale-95"
-                >
-                  <CreditCard size={20} /> Buy Now
-                </button>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Size</h3>
+                <div className="w-14 h-14 flex items-center justify-center rounded-2xl border-2 border-primary bg-primary text-white font-bold text-xl shadow-lg shadow-primary/10">{product.size}</div>
               </div>
             </div>
 
-            {/* Shipping Info */}
-            <div className="border-t pt-6 space-y-4">
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <Truck size={18} className="text-primary" />
-                <span>Delivery within 2-3 days</span>
+            {/* Cart & Buy Actions */}
+            <div className="flex flex-col sm:flex-row gap-6 pt-4">
+              <div className="flex items-center bg-gray-100 rounded-3xl p-3 flex-1 justify-between px-6 border border-gray-100">
+                <button onClick={() => quantity > 1 && setQuantity(quantity-1)} className="text-3xl font-light hover:text-primary transition-colors">-</button>
+                <span className="font-bold text-2xl">{quantity}</span>
+                <button onClick={() => setQuantity(quantity+1)} className="text-3xl font-light hover:text-primary transition-colors">+</button>
               </div>
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <RotateCcw size={18} className="text-primary" />
-                <span>Easy 7-day returns & exchange</span>
+              <button 
+                onClick={() => addItem({
+                  id: product.id, name: product.name, price: `₹${product.selling_price}`,
+                  image: product.thumbnail, size: selectedSize, color: selectedColor, quantity: quantity
+                })}
+                className="flex-[2] h-20 border-2 border-black rounded-3xl font-bold text-xl hover:bg-black hover:text-white transition-all flex items-center justify-center gap-4 shadow-sm active:scale-95"
+              >
+                <ShoppingBag size={24} /> Add to Cart
+              </button>
+            </div>
+
+            <button 
+              onClick={() => {addItem(product); router.push("/checkout")}}
+              className="w-full h-20 bg-primary text-white rounded-3xl font-bold text-2xl shadow-xl shadow-primary/20 active:scale-95 transition-all"
+            >
+              Buy Now
+            </button>
+
+            {/* Trust Badges */}
+            <div className="grid grid-cols-2 gap-4 pt-4">
+              <div className="flex items-center gap-3 p-5 bg-gray-50 rounded-2xl">
+                <Truck size={22} className="text-primary" />
+                <span className="text-sm font-semibold">Free Express Delivery</span>
+              </div>
+              <div className="flex items-center gap-3 p-5 bg-gray-50 rounded-2xl">
+                <RotateCcw size={22} className="text-primary" />
+                <span className="text-sm font-semibold">Easy Returns</span>
               </div>
             </div>
           </div>
         </div>
-
-        {/* RELATED PRODUCTS */}
-        <div className="border-t border-gray-100 pt-16">
-          <h2 className="text-3xl font-serif font-bold text-gray-900 mb-10 text-center">You May Also Like</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {relatedProducts.map((item) => (
-              <div key={item.id} className="group cursor-pointer">
-                <div className="relative h-80 overflow-hidden rounded-xl bg-gray-100 mb-4">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 invisible group-hover:translate-y-0 group-hover:opacity-100 group-hover:visible transition-all duration-300">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleAddToCart(item as any); }}
-                      className="w-full bg-white/95 backdrop-blur-sm text-gray-900 py-3 rounded-lg shadow-xl font-bold text-xs flex items-center justify-center gap-2"
-                    >
-                      <ShoppingBag size={14} /> Quick Add
-                    </button>
-                  </div>
-                </div>
-                <h3 className="font-serif text-lg text-gray-900">{item.name}</h3>
-                <p className="text-primary font-bold">{item.price}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
       </div>
     </div>
   );
