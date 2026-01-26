@@ -13,7 +13,7 @@ export default function KurtisPage() {
   useEffect(() => {
     const fetchKurtis = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/products?category=kurtis");
+        const response = await fetch("http://192.168.1.7:8000/api/products?category=kurtis");
         const data = await response.json();
         setKurtis(data);
       } catch (error) {

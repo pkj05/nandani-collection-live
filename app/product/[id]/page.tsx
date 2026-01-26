@@ -1,14 +1,14 @@
 "use client";
-
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation"; // URL se ID lene ke liye
+import { useParams, useRouter } from "next/navigation"; // useRouter joda gaya checkout ke liye
 import { ShoppingBag, Heart, Truck, RotateCcw, ShieldCheck, Star, CreditCard, Loader2 } from "lucide-react";
 // 1. Store Import kiya
 import { useCartStore } from "@/store/useCartStore";
 
 export default function ProductDetail() {
   const params = useParams(); // ID nikalne ke liye
+  const router = useRouter(); // Navigation ke liye
   const productId = params.id;
 
   // 2. Store se addItem function nikala
@@ -28,7 +28,7 @@ export default function ProductDetail() {
   useEffect(() => {
     const fetchProductDetails = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/api/products?id=${productId}`);
+        const response = await fetch(`http://192.168.1.7:8000/api/products?id=${productId}`);
         const data = await response.json();
         
         if (Array.isArray(data) && data.length > 0) {
@@ -67,6 +67,17 @@ export default function ProductDetail() {
       color: selectedColor,
       quantity: quantity,
     });
+  };
+
+  // 4. BUY NOW handle karne ka function
+  const handleBuyNow = () => {
+    if (!product) return;
+    
+    // Pehle item ko cart mein add karein
+    handleAddToCart();
+    
+    // Phir seedha checkout page par bhej dein
+    router.push("/checkout");
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -168,7 +179,11 @@ export default function ProductDetail() {
                 >
                   <ShoppingBag size={20} /> Add to Cart
                 </button>
-                <button className="h-14 bg-primary text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-lg">
+                {/* BUY NOW BUTTON ENABLED */}
+                <button 
+                  onClick={handleBuyNow}
+                  className="h-14 bg-primary text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-lg hover:opacity-90 transition-all active:scale-95"
+                >
                   <CreditCard size={20} /> Buy Now
                 </button>
               </div>

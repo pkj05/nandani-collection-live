@@ -13,7 +13,7 @@ export default function SareesPage() {
   useEffect(() => {
     const fetchSarees = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/products?category=sarees");
+        const response = await fetch("http://192.168.1.7:8000/api/products?category=sarees");
         const data = await response.json();
         setSarees(data);
       } catch (error) {

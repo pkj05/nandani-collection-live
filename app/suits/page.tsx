@@ -14,7 +14,7 @@ export default function SuitsPage() {
   useEffect(() => {
     const fetchSuits = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/products?category=suits");
+        const response = await fetch("http://192.168.1.7:8000/api/products?category=suits");
         const data = await response.json();
         setSuits(data);
       } catch (error) {
