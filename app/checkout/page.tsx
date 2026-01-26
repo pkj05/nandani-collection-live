@@ -75,8 +75,9 @@ export default function CheckoutPage() {
 
       if (result.success) {
         clearCart(); 
-        alert(`Order successful! Order ID: #${result.order_id}`);
-        router.push("/"); 
+        // 2. Alert ki jagah Success page par bhejein Order ID ke saath
+        router.push(`/checkout/success?id=${result.order_id}`);
+         
       } else {
         setError(result.message || "Something went wrong.");
       }

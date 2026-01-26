@@ -9,6 +9,7 @@ const CartToast = () => {
   const [lastItem, setLastItem] = useState<any>(null);
   
   const cart = useCartStore((state) => state.cart);
+  const lastAction = useCartStore((state) => state.lastAction); // Action ko store se nikala
   const toggleCart = useCartStore((state) => state.toggleCart);
   
   const isFirstRender = useRef(true);
@@ -33,7 +34,8 @@ const CartToast = () => {
     // 4. Cart ki lambai ya content check karein (JSON stringify deep check ke liye)
     const cartChanged = JSON.stringify(cart) !== JSON.stringify(prevCartRef.current);
 
-    if (cart.length > 0 && cartChanged) {
+    // FIX: Sirf tabhi toast dikhao jab cart badla ho AUR action 'add' ho
+    if (cart.length > 0 && cartChanged && lastAction === 'add') {
       const latest = cart[cart.length - 1];
       setLastItem(latest);
       
@@ -46,8 +48,11 @@ const CartToast = () => {
 
       prevCartRef.current = cart;
       return () => clearTimeout(timer);
+    } else {
+      // Agar update ya remove hua hai, to sirf reference update karein, toast na dikhayein
+      prevCartRef.current = cart;
     }
-  }, [cart, hasMounted]);
+  }, [cart, hasMounted, lastAction]); // Dependency mein lastAction joda
 
   // 5. Server-side rendering ke waqt kuch mat dikhao
   if (!hasMounted || !visible || !lastItem) return null;
