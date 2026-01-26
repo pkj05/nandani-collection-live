@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useCartStore } from "@/store/useCartStore";
-import { ShieldCheck, Truck, CreditCard, Smartphone, QrCode, Banknote, ChevronLeft, Ticket, AlertCircle } from "lucide-react";
+import { useCartStore } from "@/store/useCartStore"; // Rationale: Using the established store name
+import { ShieldCheck, Truck, CreditCard, Smartphone, QrCode, Banknote, ChevronLeft, Ticket, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CheckoutPage() {
-  const { cart } = useCartStore();
+  const router = useRouter();
+  const { cart, clearCart } = useCartStore(); // clearCart method included for post-order cleanup
   const [paymentMethod, setPaymentMethod] = useState("upi");
   const [coupon, setCoupon] = useState("");
   const [isCouponApplied, setIsCouponApplied] = useState(false);
+  const [loading, setLoading] = useState(false); // New: To show processing status
   
-  // Validation State
+  // Validation State - Kept exactly as your original
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -20,24 +23,69 @@ export default function CheckoutPage() {
   });
   const [error, setError] = useState("");
 
-  // Calculation Logic
+  // Calculation Logic - Kept exactly as your original
   const subtotal = cart.reduce((acc, item) => {
-    const price = parseInt(item.price.replace(/[^\d]/g, ""));
+    const price = typeof item.price === "string" 
+      ? parseInt(item.price.replace(/[^\d]/g, "")) 
+      : item.price;
     return acc + price * item.quantity;
   }, 0);
 
-  const discount = isCouponApplied ? subtotal * 0.1 : 0; // 10% Discount Example
+  const discount = isCouponApplied ? subtotal * 0.1 : 0; 
   const shipping = subtotal > 1499 ? 0 : 99;
   const total = subtotal - discount + shipping;
 
-  const handlePlaceOrder = () => {
+  // New logic integrated into your existing handler
+  const handlePlaceOrder = async () => {
     if (!form.name || form.phone.length !== 10 || !form.address || !form.pincode) {
       setError("Please fill all details correctly. Phone must be 10 digits.");
       return;
     }
     setError("");
-    alert(`Order placing via ${paymentMethod}...`);
-    // Yahan hum Django API call karenge
+    setLoading(true);
+
+    // Backend data mapping following your Schema
+    const orderData = {
+      full_name: form.name,
+      phone_number: `+91${form.phone}`, // Required by your Django RegexValidator
+      address: form.address,
+      pincode: form.pincode,
+      payment_method: paymentMethod,
+      total_amount: total,
+      shipping_charges: shipping,
+      items: cart.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        size: item.selectedSize || "N/A",
+        color: item.color || null
+      }))
+    };
+
+    try {
+      // Calling your Django Ninja API
+      const response = await fetch("http://127.0.0.1:8000/api/orders/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        clearCart(); 
+        alert(`Order successful! Order ID: #${result.order_id}`);
+        router.push("/"); 
+      } else {
+        setError(result.message || "Something went wrong.");
+      }
+    } catch (err) {
+      setError("Server connection failed. Is your Django backend running?");
+      console.error("API Error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -62,7 +110,6 @@ export default function CheckoutPage() {
           {/* LEFT: Shipping & Payment */}
           <div className="lg:col-span-8 space-y-8">
             
-            {/* Delivery Details */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-2">
                 <Truck className="text-primary" /> Delivery Details
@@ -78,16 +125,17 @@ export default function CheckoutPage() {
                 <input 
                   type="text" placeholder="Full Name" 
                   className="w-full p-3 border rounded-lg outline-primary"
+                  value={form.name}
                   onChange={(e) => setForm({...form, name: e.target.value})}
                 />
                 
-                {/* Phone with +91 Prefix */}
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium border-r pr-2">+91</span>
                   <input 
                     type="tel" placeholder="Phone Number" 
                     maxLength={10}
                     className="w-full p-3 pl-14 border rounded-lg outline-primary"
+                    value={form.phone}
                     onChange={(e) => setForm({...form, phone: e.target.value.replace(/\D/g, "")})}
                   />
                 </div>
@@ -95,6 +143,7 @@ export default function CheckoutPage() {
                 <input 
                   type="text" placeholder="Complete Address (House no, Colony, City)" 
                   className="w-full p-3 border rounded-lg outline-primary md:col-span-2"
+                  value={form.address}
                   onChange={(e) => setForm({...form, address: e.target.value})}
                 />
                 
@@ -102,12 +151,12 @@ export default function CheckoutPage() {
                   type="text" placeholder="Pincode" 
                   maxLength={6}
                   className="w-full p-3 border rounded-lg outline-primary"
+                  value={form.pincode}
                   onChange={(e) => setForm({...form, pincode: e.target.value.replace(/\D/g, "")})}
                 />
               </div>
             </div>
 
-            {/* Payment Methods */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-2">
                 <ShieldCheck className="text-primary" /> Payment Method
@@ -122,6 +171,7 @@ export default function CheckoutPage() {
                 ].map((item) => (
                   <button 
                     key={item.id}
+                    type="button"
                     onClick={() => setPaymentMethod(item.id)}
                     className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all ${paymentMethod === item.id ? "border-primary bg-primary/5" : "border-gray-100"}`}
                   >
@@ -136,12 +186,11 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* RIGHT: Summary & Coupon */}
+          {/* RIGHT: Summary */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-24">
               <h3 className="text-xl font-bold mb-6 border-b pb-4">Order Summary</h3>
               
-              {/* Coupon Section */}
               <div className="mb-6">
                 <label className="text-xs font-bold text-gray-500 uppercase mb-2 block tracking-wider">Discount Coupon</label>
                 <div className="flex gap-2">
@@ -164,7 +213,6 @@ export default function CheckoutPage() {
                 {isCouponApplied && <p className="text-xs text-green-600 mt-2 font-medium">Coupon applied successfully!</p>}
               </div>
 
-              {/* Bill Details */}
               <div className="space-y-3 text-sm border-t pt-4">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
@@ -190,13 +238,19 @@ export default function CheckoutPage() {
 
               <button 
                 onClick={handlePlaceOrder}
-                className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold mt-8 hover:bg-black transition-all active:scale-[0.98]"
+                disabled={loading}
+                className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold mt-8 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                Place Order via {paymentMethod.toUpperCase()}
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} /> Processing...
+                  </>
+                ) : (
+                  `Place Order via ${paymentMethod.toUpperCase()}`
+                )}
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
