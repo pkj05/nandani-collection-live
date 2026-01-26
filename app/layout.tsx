@@ -3,7 +3,9 @@ import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 
 import Header from "@/components/Header"; 
-import Footer from "@/components/Footer"; // Footer Import kiya
+import Footer from "@/components/Footer"; 
+import CartDrawer from "@/components/CartDrawer"; // 1. CartDrawer Import kiya
+import CartToast from "@/components/CartToast";
 
 const playfair = Playfair_Display({ 
   subsets: ["latin"],
@@ -33,13 +35,16 @@ export default function RootLayout({
         
         {/* 1. Header (Sabse Upar) */}
         <Header />
-        
-        {/* 2. Main Content (Beech me) */}
+
+        {/* 2. Cart Drawer (Parde ke piche taiyar rahega) */}
+        <CartDrawer />
+        <CartToast /> {/* Yahan add karein */}
+        {/* 3. Main Content (Beech me) */}
         <main className="flex-grow">
           {children}
         </main>
 
-        {/* 3. Footer (Sabse Niche) */}
+        {/* 4. Footer (Sabse Niche) */}
         <Footer />
         
       </body>
