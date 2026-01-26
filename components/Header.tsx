@@ -3,9 +3,18 @@
 import Link from "next/link";
 import { Search, ShoppingBag, Heart, Menu, X } from "lucide-react"; 
 import { useState } from "react"; 
+// 1. Store Import kiya
+import { useCartStore } from "@/store/useCartStore";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // 2. Store se data aur function nikala
+  const cart = useCartStore((state) => state.cart);
+  const toggleCart = useCartStore((state) => state.toggleCart);
+
+  // Kul items ginne ke liye (1 suit + 2 sarees = 3 items)
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -49,31 +58,38 @@ const Header = () => {
           <div className="flex items-center gap-4 md:gap-6">
             <button className="p-2 text-gray-700 hover:text-primary"><Search size={20} /></button>
             <button className="hidden md:block p-2 text-gray-700 hover:text-primary"><Heart size={20} /></button>
-            <button className="p-2 relative text-gray-700 hover:text-primary">
+            
+            {/* --- SMART SHOPPING BAG --- */}
+            <button 
+              onClick={toggleCart} // 3. Click pe side drawer khulega
+              className="p-2 relative text-gray-700 hover:text-primary transition-transform active:scale-90"
+            >
               <ShoppingBag size={20} />
-              <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">0</span>
+              
+              {/* 4. Dynamic Badge: Tabhi dikhega jab cart me kuch ho */}
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full animate-in zoom-in duration-300">
+                  {cartCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* --- SIDE DRAWER & OVERLAY --- */}
-
-      {/* 1. Black Overlay (Piche ka dhundla hissa) */}
+      {/* --- SIDE DRAWER (MOBILE MENU) --- */}
       <div 
-        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 md:hidden ${
+        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 md:hidden z-[55] ${
           isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
-        onClick={toggleMenu} // Kale hisse pe click karne se menu band ho jaye
+        onClick={toggleMenu}
       ></div>
 
-      {/* 2. Side Drawer (Baayi taraf se nikalne wala box) */}
       <div className={`fixed top-0 left-0 h-full w-72 bg-white z-[60] shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden ${
           isMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="p-6">
-          {/* Menu Header with Close Button */}
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-2xl font-serif font-bold text-gray-900">Nandani</h2>
             <button onClick={toggleMenu} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
@@ -81,7 +97,6 @@ const Header = () => {
             </button>
           </div>
 
-          {/* Navigation Links */}
           <nav className="flex flex-col space-y-6">
             <Link href="/suits" className="text-lg font-medium text-gray-800 hover:text-primary" onClick={toggleMenu}>Suits</Link>
             <Link href="/sarees" className="text-lg font-medium text-gray-800 hover:text-primary" onClick={toggleMenu}>Sarees</Link>
