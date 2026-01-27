@@ -1,39 +1,41 @@
-import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+"use client";
 
-// Abhi ke liye Fake Data (Baad me Backend se aayega)
-const products = [
-  {
-    id: 1,
-    name: "Royal Anarkali Suit",
-    category: "Suits",
-    price: "₹2,499",
-    image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?q=80&w=2670&auto=format&fit=crop",
-  },
-  {
-    id: 2,
-    name: "Banarasi Silk Saree",
-    category: "Sarees",
-    price: "₹4,999",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=2574&auto=format&fit=crop",
-  },
-  {
-    id: 3,
-    name: "Embroidered Kurti",
-    category: "Kurtis",
-    price: "₹1,299",
-    image: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?q=80&w=2574&auto=format&fit=crop",
-  },
-  {
-    id: 4,
-    name: "Velvet Party Suit",
-    category: "Suits",
-    price: "₹3,999",
-    image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?q=80&w=2534&auto=format&fit=crop",
-  },
-];
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ShoppingBag, Loader2 } from "lucide-react";
+import { useCartStore } from "@/store/useCartStore";
 
 const FeaturedProducts = () => {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const addItem = useCartStore((state) => state.addItem);
+
+  // 1. Fetching Newest Products from Backend
+  useEffect(() => {
+    const fetchNewArrivals = async () => {
+      try {
+        setLoading(true);
+        // Laptop IP 192.168.1.7 aur newest sort order
+        const response = await fetch("http://192.168.1.7:8000/api/products?sort=newest");
+        const data = await response.json();
+        // Sirf top 4 latest products dikhane ke liye
+        setProducts(data.slice(0, 4));
+      } catch (error) {
+        console.error("Error fetching new arrivals:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNewArrivals();
+  }, []);
+
+  if (loading) return (
+    <div className="py-20 flex justify-center items-center bg-gray-50">
+      <Loader2 className="animate-spin text-primary" size={32} />
+    </div>
+  );
+
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,24 +48,42 @@ const FeaturedProducts = () => {
           <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
         </div>
 
-        {/* Product Grid */}
+        {/* Dynamic Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {products.map((product) => (
             <div key={product.id} className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               
-              {/* Image Container */}
+              {/* Image Container with Safe Link */}
               <div className="relative h-[350px] overflow-hidden">
-                <img 
-                  src={product.image} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
+                <Link href={`/product/${product.id}`}>
+                  <img 
+                    src={product.thumbnail} 
+                    alt={product.name} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                </Link>
                 
-                {/* 'Add to Cart' Button (Hidden by default, shown on hover) */}
+                {/* Safe 'Add to Cart' with stock check */}
                 <div className="absolute bottom-4 left-0 right-0 px-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                  <button className="w-full bg-white text-gray-900 font-medium py-3 rounded shadow-lg flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-colors">
+                  <button 
+                    disabled={product.stock <= 0}
+                    onClick={() => addItem({
+                      id: product.id,
+                      name: product.name,
+                      price: `₹${product.selling_price}`,
+                      image: product.thumbnail,
+                      size: product.size || "Free Size",
+                      color: product.color || "Multi",
+                      quantity: 1
+                    })}
+                    className={`w-full font-medium py-3 rounded shadow-lg flex items-center justify-center gap-2 transition-colors ${
+                      product.stock > 0 
+                      ? "bg-white text-gray-900 hover:bg-black hover:text-white" 
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}
+                  >
                     <ShoppingBag size={18} />
-                    Add to Cart
+                    {product.stock > 0 ? "Add to Cart" : "Out of Stock"}
                   </button>
                 </div>
               </div>
@@ -71,14 +91,17 @@ const FeaturedProducts = () => {
               {/* Product Info */}
               <div className="p-4 text-center">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                  {product.category}
+                  {product.category_name}
                 </p>
-                <h3 className="text-lg font-serif font-medium text-gray-900 mb-2 truncate">
-                  {product.name}
-                </h3>
-                <p className="text-primary font-bold text-lg">
-                  {product.price}
-                </p>
+                <Link href={`/product/${product.id}`}>
+                  <h3 className="text-lg font-serif font-medium text-gray-900 mb-2 truncate hover:text-primary transition-colors">
+                    {product.name}
+                  </h3>
+                </Link>
+                <div className="flex items-center justify-center gap-3">
+                  <p className="text-primary font-bold text-lg">₹{product.selling_price.toLocaleString()}</p>
+                  <p className="text-gray-400 line-through text-sm">₹{product.original_price.toLocaleString()}</p>
+                </div>
               </div>
 
             </div>
