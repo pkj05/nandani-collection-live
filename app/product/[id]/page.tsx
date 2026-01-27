@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation"; 
 import { ShoppingBag, Heart, Truck, RotateCcw, CreditCard, Loader2, ZoomIn, ZoomOut, Play, X } from "lucide-react";
 
-// Swiper & Pinch Zoom Library Imports
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import 'swiper/css';
@@ -12,7 +11,6 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import QuickPinchZoom, { make3dTransformValue } from "react-quick-pinch-zoom";
 
-// Cart Store Import
 import { useCartStore } from "@/store/useCartStore";
 
 export default function ProductDetail() {
@@ -21,7 +19,6 @@ export default function ProductDetail() {
   const productId = params.id;
   const addItem = useCartStore((state) => state.addItem);
 
-  // --- Dynamic States ---
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState("");
@@ -34,14 +31,11 @@ export default function ProductDetail() {
   const pzRefs = useRef<any[]>([]);
   const imgRefs = useRef<any[]>([]);
 
-  // Smooth Pan Fix Logic: scale > 1 par swipe lock aur free movement
   const onUpdate = useCallback((index: number) => ({ x, y, scale }: any) => {
     const img = imgRefs.current[index];
     if (img) {
       const value = make3dTransformValue({ x, y, scale });
       img.style.setProperty("transform", value);
-      
-      // Swiper touch control based on zoom
       if (scale > 1.05) {
         setIsZoomed(true);
         if (swiperInstance) {
@@ -55,7 +49,6 @@ export default function ProductDetail() {
     }
   }, [swiperInstance]);
 
-  // Backend se data mangana (Laptop IP: 192.168.1.7)
   useEffect(() => {
     const fetchProductDetails = async () => {
       try {
@@ -76,7 +69,6 @@ export default function ProductDetail() {
     if (productId) fetchProductDetails();
   }, [productId]);
 
-  // Manual Zoom Buttons Logic
   const handleManualZoom = (type: 'in' | 'out') => {
     const activeIndex = swiperInstance?.activeIndex || 0;
     const currentPz = pzRefs.current[activeIndex];
@@ -101,60 +93,26 @@ export default function ProductDetail() {
     <div className="bg-white min-h-screen font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
-          
-          {/* IMAGE SECTION - Swiper with Pinch-Zoom */}
           <div className="relative rounded-3xl overflow-hidden bg-gray-100 h-[550px] md:h-[750px] shadow-sm">
             {!showVideo ? (
               <>
-                <Swiper
-                  modules={[Navigation, Pagination, Autoplay]}
-                  onSwiper={setSwiperInstance}
-                  spaceBetween={0}
-                  slidesPerView={1}
-                  navigation={!isZoomed}
-                  pagination={{ clickable: true }}
-                  autoplay={isZoomed ? false : { delay: 4000, disableOnInteraction: true }}
-                  className="w-full h-full"
-                >
+                <Swiper modules={[Navigation, Pagination, Autoplay]} onSwiper={setSwiperInstance} spaceBetween={0} slidesPerView={1} navigation={!isZoomed} pagination={{ clickable: true }} autoplay={isZoomed ? false : { delay: 4000, disableOnInteraction: true }} className="w-full h-full">
                   {allImages.map((img, index) => (
                     <SwiperSlide key={index}>
-                      {/* Ref Fix: Safe ref assignment with null check */}
-                      <QuickPinchZoom 
-                        ref={(el) => { if (el) pzRefs.current[index] = el; }} 
-                        onUpdate={onUpdate(index)} 
-                        draggableUnZoomed={false}
-                        enforceBounds={false} 
-                        containerProps={{
-                          style: { width: "100%", height: "100%" }
-                        }}
-                      >
+                      <QuickPinchZoom ref={(el) => { if (el) pzRefs.current[index] = el; }} onUpdate={onUpdate(index)} draggableUnZoomed={false} enforceBounds={false} containerProps={{ style: { width: "100%", height: "100%" } }}>
                         <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                          {/* Ref Fix: Safe ref assignment for Image */}
-                          <img 
-                            ref={(el) => { if (el) imgRefs.current[index] = el; }}
-                            src={img} 
-                            alt={`${product.name}-${index}`} 
-                            className="w-full h-full object-cover pointer-events-none" 
-                            style={{ willChange: "transform" }}
-                          />
+                          <img ref={(el) => { if (el) imgRefs.current[index] = el; }} src={img} alt={`${product.name}-${index}`} className="w-full h-full object-cover pointer-events-none" style={{ willChange: "transform" }} />
                         </div>
                       </QuickPinchZoom>
                     </SwiperSlide>
                   ))}
                 </Swiper>
-
-                {/* Zoom Control Buttons */}
                 <div className="absolute top-6 right-6 z-40 flex flex-col gap-4">
                   <button onClick={() => handleManualZoom('in')} className="p-4 bg-white/90 rounded-2xl shadow-2xl text-black active:scale-90 transition-all border border-gray-100"><ZoomIn size={24} /></button>
                   <button onClick={() => handleManualZoom('out')} className="p-4 bg-white/90 rounded-2xl shadow-2xl text-black active:scale-90 transition-all border border-gray-100"><ZoomOut size={24} /></button>
                 </div>
-
-                {/* Video Option */}
                 {product.video && (
-                  <button 
-                    onClick={() => setShowVideo(true)}
-                    className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-black text-white px-8 py-4 rounded-full shadow-2xl font-bold active:scale-95 transition-all"
-                  >
+                  <button onClick={() => setShowVideo(true)} className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-black text-white px-8 py-4 rounded-full shadow-2xl font-bold active:scale-95 transition-all">
                     <Play size={20} fill="white" /> Watch Product Video
                   </button>
                 )}
@@ -167,7 +125,6 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* DETAILS SECTION */}
           <div className="flex flex-col space-y-8 py-4">
             <div>
               <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">{product.name}</h1>
@@ -179,7 +136,6 @@ export default function ProductDetail() {
 
             <p className="text-gray-600 leading-relaxed text-xl font-light">{product.description}</p>
 
-            {/* Attributes Selection */}
             <div className="flex gap-12">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Color</h3>
@@ -193,49 +149,49 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Cart & Buy Actions - Safe AddItem Logic */}
-            <div className="flex flex-col sm:flex-row gap-6 pt-4">
-              <div className="flex items-center bg-gray-50 rounded-3xl p-3 flex-1 justify-between px-6 border border-gray-100">
-                <button onClick={() => quantity > 1 && setQuantity(quantity-1)} className="text-3xl font-light hover:text-primary transition-colors">-</button>
-                <span className="font-bold text-2xl">{quantity}</span>
-                <button onClick={() => setQuantity(quantity+1)} className="text-3xl font-light hover:text-primary transition-colors">+</button>
+            {/* Cart & Buy Actions - Stock Check Implementation */}
+            {product.stock > 0 ? (
+              <>
+                <div className="flex flex-col sm:flex-row gap-6 pt-4">
+                  <div className="flex items-center bg-gray-50 rounded-3xl p-3 flex-1 justify-between px-6 border border-gray-100">
+                    <button onClick={() => quantity > 1 && setQuantity(quantity-1)} className="text-3xl font-light hover:text-primary transition-colors">-</button>
+                    <span className="font-bold text-2xl">{quantity}</span>
+                    <button onClick={() => setQuantity(quantity+1)} className="text-3xl font-light hover:text-primary transition-colors">+</button>
+                  </div>
+                  <button 
+                    onClick={() => addItem({
+                      id: product.id, name: product.name, price: `₹${product.selling_price}`,
+                      image: product.thumbnail, size: selectedSize || product.size || "Free Size", 
+                      color: selectedColor || product.color || "Multi", quantity: quantity
+                    })}
+                    className="flex-[2] h-20 border-2 border-black rounded-3xl font-bold text-xl hover:bg-black hover:text-white transition-all flex items-center justify-center gap-4 shadow-sm active:scale-95"
+                  >
+                    <ShoppingBag size={24} /> Add to Cart
+                  </button>
+                </div>
+                <button 
+                  onClick={() => {
+                    addItem({
+                      id: product.id, name: product.name, price: `₹${product.selling_price}`,
+                      image: product.thumbnail, size: selectedSize || product.size || "Free Size", 
+                      color: selectedColor || product.color || "Multi", quantity: quantity
+                    }); 
+                    router.push("/checkout");
+                  }}
+                  className="w-full h-20 bg-primary text-white rounded-3xl font-bold text-2xl shadow-xl shadow-primary/20 active:scale-95 transition-all"
+                >
+                  Buy Now
+                </button>
+              </>
+            ) : (
+              <div className="pt-4 space-y-4">
+                <div className="w-full h-20 bg-gray-100 text-gray-400 rounded-3xl font-bold text-xl flex items-center justify-center border-2 border-dashed border-gray-200 cursor-not-allowed">
+                  Currently Out of Stock
+                </div>
+                <p className="text-center text-red-500 font-medium italic">We're sorry! This designer piece is currently unavailable.</p>
               </div>
-              <button 
-                onClick={() => addItem({
-                  id: product.id, 
-                  name: product.name, 
-                  price: `₹${product.selling_price}`, // Standard format for calculation
-                  image: product.thumbnail, 
-                  size: selectedSize || product.size || "Free Size", 
-                  color: selectedColor || product.color || "Multi", 
-                  quantity: quantity
-                })}
-                className="flex-[2] h-20 border-2 border-black rounded-3xl font-bold text-xl hover:bg-black hover:text-white transition-all flex items-center justify-center gap-4 shadow-sm active:scale-95"
-              >
-                <ShoppingBag size={24} /> Add to Cart
-              </button>
-            </div>
+            )}
 
-            {/* Buy Now Button Fix: Use standardized object format to prevent NaN at checkout */}
-            <button 
-              onClick={() => {
-                addItem({
-                  id: product.id, 
-                  name: product.name, 
-                  price: `₹${product.selling_price}`, 
-                  image: product.thumbnail, 
-                  size: selectedSize || product.size || "Free Size", 
-                  color: selectedColor || product.color || "Multi", 
-                  quantity: quantity
-                }); 
-                router.push("/checkout");
-              }}
-              className="w-full h-20 bg-primary text-white rounded-3xl font-bold text-2xl shadow-xl shadow-primary/20 active:scale-95 transition-all"
-            >
-              Buy Now
-            </button>
-            
-            {/* Trust Badges */}
             <div className="grid grid-cols-2 gap-4 pt-4">
               <div className="flex items-center gap-3 p-5 bg-gray-50 rounded-2xl">
                 <Truck size={22} className="text-primary" />
