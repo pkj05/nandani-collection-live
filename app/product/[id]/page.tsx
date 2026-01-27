@@ -89,7 +89,7 @@ export default function ProductDetail() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white">
       <Loader2 className="animate-spin text-primary" size={48} />
-      <p className="font-serif text-gray-400">Nandani Collection Loading...</p>
+      <p className="font-serif text-gray-400 italic">Nandani Collection Loading...</p>
     </div>
   );
 
@@ -118,21 +118,23 @@ export default function ProductDetail() {
                 >
                   {allImages.map((img, index) => (
                     <SwiperSlide key={index}>
+                      {/* Ref Fix: Safe ref assignment with null check */}
                       <QuickPinchZoom 
-                        ref={(el) => (pzRefs.current[index] = el)} 
+                        ref={(el) => { if (el) pzRefs.current[index] = el; }} 
                         onUpdate={onUpdate(index)} 
                         draggableUnZoomed={false}
-                        enforceBounds={false} // Free Pan lock hataya gaya
+                        enforceBounds={false} 
                         containerProps={{
                           style: { width: "100%", height: "100%" }
                         }}
                       >
                         <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                          {/* Ref Fix: Safe ref assignment for Image */}
                           <img 
-                            ref={(el) => (imgRefs.current[index] = el)}
+                            ref={(el) => { if (el) imgRefs.current[index] = el; }}
                             src={img} 
                             alt={`${product.name}-${index}`} 
-                            className="w-full h-full object-cover pointer-events-none" // cover for edge-to-edge pan
+                            className="w-full h-full object-cover pointer-events-none" 
                             style={{ willChange: "transform" }}
                           />
                         </div>
@@ -191,17 +193,22 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Cart & Buy Actions */}
+            {/* Cart & Buy Actions - Safe AddItem Logic */}
             <div className="flex flex-col sm:flex-row gap-6 pt-4">
-              <div className="flex items-center bg-gray-100 rounded-3xl p-3 flex-1 justify-between px-6 border border-gray-100">
+              <div className="flex items-center bg-gray-50 rounded-3xl p-3 flex-1 justify-between px-6 border border-gray-100">
                 <button onClick={() => quantity > 1 && setQuantity(quantity-1)} className="text-3xl font-light hover:text-primary transition-colors">-</button>
                 <span className="font-bold text-2xl">{quantity}</span>
                 <button onClick={() => setQuantity(quantity+1)} className="text-3xl font-light hover:text-primary transition-colors">+</button>
               </div>
               <button 
                 onClick={() => addItem({
-                  id: product.id, name: product.name, price: `₹${product.selling_price}`,
-                  image: product.thumbnail, size: selectedSize, color: selectedColor, quantity: quantity
+                  id: product.id, 
+                  name: product.name, 
+                  price: `₹${product.selling_price}`, // Standard format for calculation
+                  image: product.thumbnail, 
+                  size: selectedSize || product.size || "Free Size", 
+                  color: selectedColor || product.color || "Multi", 
+                  quantity: quantity
                 })}
                 className="flex-[2] h-20 border-2 border-black rounded-3xl font-bold text-xl hover:bg-black hover:text-white transition-all flex items-center justify-center gap-4 shadow-sm active:scale-95"
               >
@@ -209,13 +216,25 @@ export default function ProductDetail() {
               </button>
             </div>
 
+            {/* Buy Now Button Fix: Use standardized object format to prevent NaN at checkout */}
             <button 
-              onClick={() => {addItem(product); router.push("/checkout")}}
+              onClick={() => {
+                addItem({
+                  id: product.id, 
+                  name: product.name, 
+                  price: `₹${product.selling_price}`, 
+                  image: product.thumbnail, 
+                  size: selectedSize || product.size || "Free Size", 
+                  color: selectedColor || product.color || "Multi", 
+                  quantity: quantity
+                }); 
+                router.push("/checkout");
+              }}
               className="w-full h-20 bg-primary text-white rounded-3xl font-bold text-2xl shadow-xl shadow-primary/20 active:scale-95 transition-all"
             >
               Buy Now
             </button>
-
+            
             {/* Trust Badges */}
             <div className="grid grid-cols-2 gap-4 pt-4">
               <div className="flex items-center gap-3 p-5 bg-gray-50 rounded-2xl">

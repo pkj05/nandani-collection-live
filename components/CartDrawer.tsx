@@ -10,8 +10,10 @@ const CartDrawer = () => {
 
   // Total Price calculate करने के लिए
   const subtotal = cart.reduce((acc, item) => {
-    const price = parseInt(item.price.replace(/[^\d]/g, ""));
-    return acc + price * item.quantity;
+    // NaN Fix: Pehle check karein ki price hai ya nahi. Agar undefined hai to "0" maane.
+    const rawPrice = item.price ? String(item.price).replace(/[^\d]/g, "") : "0";
+    const price = parseInt(rawPrice || "0");
+    return acc + price * (item.quantity || 1);
   }, 0);
 
   return (
@@ -81,7 +83,10 @@ const CartDrawer = () => {
                           className="px-2 py-1 hover:bg-gray-50"
                         >+</button>
                       </div>
-                      <span className="font-bold text-gray-900">{item.price}</span>
+                      {/* Price Display Fix: Safe rendering with ₹ symbol */}
+                      <span className="font-bold text-gray-900">
+                        ₹{item.price ? String(item.price).replace(/[^\d]/g, "").toLocaleString() : "0"}
+                      </span>
                     </div>
                   </div>
                 </div>
