@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
-from pathlib import Path
+import os
+import dj_database_url
+from pathlib import Path  # Agar ye pehle se hai to theek, nahi to rehne do
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-f+b6pyom1m7h*exw@fs-nm!-!w2x)^zfyif)n)evjv$i$5sn9n'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -78,11 +79,15 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+D# Purana SQLite code hata dena
+
+# Naya Live Database Setup
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        # Local computer par SQLite chalega (testing ke liye)
+        default='sqlite:///db.sqlite3',
+        conn_max_age=600
+    )
 }
 
 
