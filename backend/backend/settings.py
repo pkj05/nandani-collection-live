@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-D# Purana SQLite code hata dena
+# Purana SQLite code hata dena
 
 # Naya Live Database Setup
 DATABASES = {
