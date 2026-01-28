@@ -58,12 +58,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# Database Setup (Neon PostgreSQL)
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgresql://neondb_owner:npg_WnMY3tiKDAE8@ep-spring-dawn-ahotu28y-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require',
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',  # जो आपने Initial DB name रखा था
+        'USER': 'postgres',           # Master username
+        'PASSWORD': 'bitto123',     # जो आपने अभी सेट किया है
+        'HOST': 'nandani-db.cf0scc6ek0y4.ap-south-1.rds.amazonaws.com', # जो 5 मिनट बाद मिलेगा
+        'PORT': '5432',
+    }
 }
 
 # Password validation
