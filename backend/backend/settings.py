@@ -82,14 +82,20 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Purana SQLite code hata dena
 
 # Naya Live Database Setup
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         # Local computer par SQLite chalega (testing ke liye)
+#         default='sqlite:///db.sqlite3',
+#         conn_max_age=600
+#     )
+# }
 DATABASES = {
     'default': dj_database_url.config(
-        # Local computer par SQLite chalega (testing ke liye)
-        default='sqlite:///db.sqlite3',
+        # आपका पूरा लिंक यहाँ आएगा
+        default='postgresql://neondb_owner:npg_WnMY3tiKDAE8@ep-spring-dawn-ahotu28y-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require',
         conn_max_age=600
     )
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
