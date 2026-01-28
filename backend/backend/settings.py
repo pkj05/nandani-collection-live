@@ -136,5 +136,8 @@ STATIC_URL = 'static/'
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Media Settings (Image Upload)
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = BASE_DIR / 'media'
+# settings.py के आखिर में देखें
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
