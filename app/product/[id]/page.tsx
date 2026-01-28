@@ -56,7 +56,7 @@ export default function ProductDetail() {
     const fetchAllData = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://192.168.1.8:8000/api/products?id=${productId}`);
+        const res = await fetch(`https://nandani-collection-live.onrender.com/api/products?id=${productId}`);
         const data = await res.json();
         
         if (Array.isArray(data) && data.length > 0) {
@@ -66,7 +66,7 @@ export default function ProductDetail() {
           setSelectedColor(item.color);
 
           // Similar products mein sirf In Stock (stock > 0) item dikhao
-          const similarRes = await fetch(`http://192.168.1.8:8000/api/products?category=${item.category_name}`);
+          const similarRes = await fetch(`https://nandani-collection-live.onrender.com/api/products?category=${item.category_name}`);
           const similarData = await similarRes.json();
           const filteredSimilar = similarData.filter((p: any) => p.id !== item.id && p.stock > 0);
           setSimilarProducts(filteredSimilar.slice(0, 4));

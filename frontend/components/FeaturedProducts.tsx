@@ -11,7 +11,7 @@ const FeaturedProducts = () => {
     const fetchNewArrivals = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://192.168.1.8:8000/api/products?sort=newest");
+        const response = await fetch("https://nandani-collection-live.onrender.com/api/products?sort=newest");
         const data = await response.json();
 
         // --- GROUPING LOGIC ---

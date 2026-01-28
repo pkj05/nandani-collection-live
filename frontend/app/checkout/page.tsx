@@ -64,7 +64,7 @@ export default function CheckoutPage() {
 
     try {
       // Calling your Django Ninja API with Laptop IP
-      const response = await fetch("http://192.168.1.8:8000/api/orders/create", {
+      const response = await fetch("https://nandani-collection-live.onrender.com/api/orders/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

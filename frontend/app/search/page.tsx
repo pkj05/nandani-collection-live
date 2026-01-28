@@ -30,7 +30,7 @@ function SearchContent() {
       }
       try {
         setLoading(true);
-        const response = await fetch(`http://192.168.1.8:8000/api/products?search=${query}`);
+        const response = await fetch(`https://nandani-collection-live.onrender.com/api/products?search=${query}`);
         const data = await response.json();
         setProducts(data);
         setFilteredProducts(data);

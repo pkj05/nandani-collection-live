@@ -29,7 +29,7 @@ export default function CategoryPage() {
       if (!categoryname) return;
       try {
         setLoading(true);
-        const response = await fetch(`http://192.168.1.8:8000/api/products?category=${categoryname}&sort=${sortOrder}`);
+        const response = await fetch(`https://nandani-collection-live.onrender.com/api/products?category=${categoryname}&sort=${sortOrder}`);
         const data = await response.json();
         setProducts(data);
         setFilteredProducts(data); // Shuruat mein saara data dikhao

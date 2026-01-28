@@ -24,7 +24,7 @@ const Header = () => {
     const fetchCategories = async () => {
       try {
         // Laptop IP: 192.168.1.8 ka istemal phone access ke liye
-        const response = await fetch("http://192.168.1.8:8000/api/categories");
+        const response = await fetch("https://nandani-collection-live.onrender.com/api/categories");
         const data = await response.json();
         setCategories(data);
       } catch (error) {

@@ -19,7 +19,7 @@ const Hero = () => {
     const fetchBanners = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://192.168.1.8:8000/api/banners");
+        const response = await fetch("https://nandani-collection-live.onrender.com/api/banners");
         const data = await response.json();
         setBanners(data);
       } catch (error) {

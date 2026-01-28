@@ -16,7 +16,7 @@ const CategoryPage = () => {
     const fetchCategoryProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://192.168.1.8:8000/api/products?category=${categoryName}`);
+        const response = await fetch(`https://nandani-collection-live.onrender.com/api/products?category=${categoryName}`);
         const data = await response.json();
 
         // --- MASTER GROUPING LOGIC ---
