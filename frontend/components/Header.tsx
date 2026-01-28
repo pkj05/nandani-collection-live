@@ -46,7 +46,7 @@ const Header = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("http://192.168.1.7:8000/api/categories");
+        const response = await fetch("http://192.168.1.8:8000/api/categories");
         const data = await response.json();
         setCategories(data);
       } catch (error) { console.error("Header categories fetch error:", error); }
@@ -63,7 +63,7 @@ const Header = () => {
       }
       try {
         setIsSearching(true);
-        const response = await fetch(`http://192.168.1.7:8000/api/products?search=${encodeURIComponent(searchTerm)}`);
+        const response = await fetch(`http://192.168.1.8:8000/api/products?search=${encodeURIComponent(searchTerm)}`);
         const data = await response.json();
         setSuggestions(data.slice(0, 5)); 
         

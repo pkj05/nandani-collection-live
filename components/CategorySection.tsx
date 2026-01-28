@@ -13,8 +13,8 @@ const CategorySection = () => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        // Laptop IP ka istemal (192.168.1.7)
-        const response = await fetch("http://192.168.1.7:8000/api/categories");
+        // Laptop IP ka istemal (192.168.1.8)
+        const response = await fetch("http://192.168.1.8:8000/api/categories");
         const data = await response.json();
         setCategories(data);
       } catch (error) {

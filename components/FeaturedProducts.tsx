@@ -15,8 +15,8 @@ const FeaturedProducts = () => {
     const fetchNewArrivals = async () => {
       try {
         setLoading(true);
-        // Laptop IP 192.168.1.7 aur newest sort order
-        const response = await fetch("http://192.168.1.7:8000/api/products?sort=newest");
+        // Laptop IP 192.168.1.8 aur newest sort order
+        const response = await fetch("http://192.168.1.8:8000/api/products?sort=newest");
         const data = await response.json();
         // Sirf top 4 latest products dikhane ke liye
         setProducts(data.slice(0, 4));

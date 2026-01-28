@@ -23,7 +23,7 @@ const CartDrawer = () => {
         
         // Har cart item ke liye backend se latest stock mangao
         for (const item of cart) {
-          const res = await fetch(`http://192.168.1.7:8000/api/products?id=${item.id}`);
+          const res = await fetch(`http://192.168.1.8:8000/api/products?id=${item.id}`);
           const data = await res.json();
           if (data.length > 0) {
             stockData[item.id] = data[0].stock;

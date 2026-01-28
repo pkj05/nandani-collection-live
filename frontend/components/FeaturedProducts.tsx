@@ -11,7 +11,7 @@ const FeaturedProducts = () => {
     const fetchNewArrivals = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://192.168.1.7:8000/api/products?sort=newest");
+        const response = await fetch("http://192.168.1.8:8000/api/products?sort=newest");
         const data = await response.json();
 
         // --- GROUPING LOGIC ---

@@ -63,7 +63,7 @@ export default function CheckoutPage() {
 
     try {
       // Calling your Django Ninja API
-      const response = await fetch("http://192.168.1.7:8000/api/orders/create", {
+      const response = await fetch("http://192.168.1.8:8000/api/orders/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
