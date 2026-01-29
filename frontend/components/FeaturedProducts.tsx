@@ -11,7 +11,7 @@ const FeaturedProducts = () => {
     const fetchNewArrivals = async () => {
       try {
         setLoading(true);
-        const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/products?sort=newest");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?sort=newest`);
         const data = await response.json();
 
         // --- GROUPING LOGIC ---

@@ -64,7 +64,7 @@ export default function CheckoutPage() {
 
     try {
       // Calling your Django Ninja API with Laptop IP
-      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/orders/create", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -14,7 +14,7 @@ const CategorySection = () => {
       try {
         setLoading(true);
         // Laptop IP ka istemal (192.168.1.8)
-        const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/categories");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`);
         const data = await response.json();
         setCategories(data);
       } catch (error) {

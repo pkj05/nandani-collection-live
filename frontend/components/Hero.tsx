@@ -19,7 +19,7 @@ const Hero = () => {
     const fetchBanners = async () => {
       try {
         setLoading(true);
-        const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/banners");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/banners`);
         const data = await response.json();
         setBanners(data);
       } catch (error) {
