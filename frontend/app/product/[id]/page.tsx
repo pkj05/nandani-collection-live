@@ -63,7 +63,7 @@ export default function ProductDetail() {
     const fetchAllData = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`https://nandani-collection-live.onrender.com/api/products?id=${productId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?id=${productId}`);
         const data = await res.json();
         
         if (Array.isArray(data) && data.length > 0) {
@@ -72,7 +72,7 @@ export default function ProductDetail() {
           setSelectedSize(item.size);
 
           // Similar products fetch based on category
-          const similarRes = await fetch(`https://nandani-collection-live.onrender.com/api/products?category=${item.category_name}`);
+          const similarRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?category=${item.category_name}`);
           const similarData = await similarRes.json();
           const filteredSimilar = similarData.filter((p: any) => p.id !== item.id && p.stock > 0);
           setSimilarProducts(filteredSimilar.slice(0, 4));

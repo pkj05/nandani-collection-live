@@ -30,7 +30,7 @@ function SearchContent() {
       }
       try {
         setLoading(true);
-        const response = await fetch(`https://nandani-collection-live.onrender.com/api/products?search=${query}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?search=${query}`);
         const data = await response.json();
         setProducts(data);
         setFilteredProducts(data);

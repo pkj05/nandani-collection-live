@@ -46,7 +46,7 @@ const Header = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("https://nandani-collection-live.onrender.com/api/categories");
+        const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/categories");
         const data = await response.json();
         setCategories(data);
       } catch (error) { console.error("Header categories fetch error:", error); }
@@ -63,7 +63,7 @@ const Header = () => {
       }
       try {
         setIsSearching(true);
-        const response = await fetch(`https://nandani-collection-live.onrender.com/api/products?search=${encodeURIComponent(searchTerm)}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?search=${encodeURIComponent(searchTerm)}`);
         const data = await response.json();
         setSuggestions(data.slice(0, 5)); 
         
