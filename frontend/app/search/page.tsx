@@ -3,17 +3,16 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ShoppingBag, Loader2, SearchX, ChevronDown } from "lucide-react";
-import { useCartStore } from "@/store/useCartStore";
+import { Loader2, SearchX, ChevronDown } from "lucide-react";
+import ProductCard from "@/components/ProductCard"; // Naya ProductCard use karein
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || ""; 
   
   const [products, setProducts] = useState<any[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([]); // Filtered data ke liye
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const addItem = useCartStore((state) => state.addItem);
 
   // Price Filter State
   const [priceFilters, setPriceFilters] = useState({
@@ -21,6 +20,7 @@ function SearchContent() {
     above2500: false
   });
 
+  // 1. Fetch Search Results
   useEffect(() => {
     const fetchSearchResults = async () => {
       if (!query) {
@@ -30,6 +30,7 @@ function SearchContent() {
       }
       try {
         setLoading(true);
+        // Naya API call jo search aur variants handle karta hai
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?search=${query}`);
         const data = await response.json();
         setProducts(data);
@@ -43,13 +44,14 @@ function SearchContent() {
     fetchSearchResults();
   }, [query]);
 
-  // Price Filter Logic
+  // 2. Updated Price Filter Logic (Base Price ke hisaab se)
   useEffect(() => {
     let updatedList = [...products];
     if (priceFilters.under2500 || priceFilters.above2500) {
       updatedList = products.filter((p) => {
-        if (priceFilters.under2500 && p.selling_price >= 500 && p.selling_price <= 2500) return true;
-        if (priceFilters.above2500 && p.selling_price > 2500) return true;
+        const price = Number(p.base_price);
+        if (priceFilters.under2500 && price >= 500 && price <= 2500) return true;
+        if (priceFilters.above2500 && price > 2500) return true;
         return false;
       });
     }
@@ -66,85 +68,66 @@ function SearchContent() {
   if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 bg-white">
       <Loader2 className="animate-spin text-primary" size={48} />
-      <p className="font-serif text-gray-400 italic">Searching for "{query}"...</p>
+      <p className="font-serif text-gray-400 italic tracking-widest uppercase text-xs">Searching designs...</p>
     </div>
   );
 
   return (
     <div className="bg-white min-h-screen pb-20 font-sans">
-      <div className="bg-gray-50 py-12 text-center">
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-2">Search Results</h1>
-        <p className="text-gray-500 text-sm italic">Results for: <span className="text-primary font-bold">"{query}"</span></p>
+      <div className="bg-gray-50/50 py-16 text-center border-b border-gray-100">
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight">Search Results</h1>
+        <p className="text-gray-400 text-sm font-medium tracking-widest uppercase italic">
+          Found {filteredProducts.length} results for: <span className="text-primary italic">"{query}"</span>
+        </p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 flex flex-col md:flex-row gap-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 flex flex-col md:flex-row gap-12">
         
-        {/* Left Side Sidebar Filters */}
-        <div className="hidden md:block w-64 space-y-8 flex-shrink-0">
-          <div>
-            <h3 className="font-serif font-bold text-lg mb-4 flex items-center justify-between border-b pb-2">
-              Price Range <ChevronDown size={16} />
+        {/* LEFT: Sidebar Filters (Preserved) */}
+        <div className="md:w-64 space-y-8 flex-shrink-0">
+          <div className="sticky top-24 border border-gray-100 p-6 rounded-3xl bg-gray-50/30">
+            <h3 className="font-serif font-bold text-lg mb-6 flex items-center justify-between border-b border-gray-200 pb-3">
+              Price Range <ChevronDown size={14} className="text-gray-400" />
             </h3>
-            <div className="space-y-3 text-gray-600 text-sm mt-4">
-              <label className="flex items-center gap-3 cursor-pointer">
+            <div className="space-y-4 text-gray-600 text-sm">
+              <label className="flex items-center gap-3 cursor-pointer group">
                 <input 
                   type="checkbox" 
-                  className="rounded border-gray-300 text-primary" 
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" 
                   checked={priceFilters.under2500}
                   onChange={() => handleFilterChange('under2500')}
                 /> 
-                ₹500 - ₹2500
+                <span className="group-hover:text-black transition-colors font-medium">₹500 - ₹2,500</span>
               </label>
-              <label className="flex items-center gap-3 cursor-pointer">
+              <label className="flex items-center gap-3 cursor-pointer group">
                 <input 
                   type="checkbox" 
-                  className="rounded border-gray-300 text-primary" 
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" 
                   checked={priceFilters.above2500}
                   onChange={() => handleFilterChange('above2500')}
                 /> 
-                Above ₹2500
+                <span className="group-hover:text-black transition-colors font-medium">Above ₹2,500</span>
               </label>
             </div>
           </div>
         </div>
 
-        {/* Right Side Product Grid */}
+        {/* RIGHT: Product Grid (Modified to use ProductCard) */}
         <div className="flex-1">
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-20 flex flex-col items-center gap-4">
-              <SearchX size={64} className="text-gray-200" />
-              <p className="text-gray-400 font-serif text-xl italic">Maaf kijiye! Koi matching product nahi mila.</p>
+            <div className="text-center py-24 flex flex-col items-center gap-6">
+              <div className="bg-gray-50 p-8 rounded-full">
+                <SearchX size={64} className="text-gray-200" strokeWidth={1} />
+              </div>
+              <p className="text-gray-400 font-serif text-xl italic">Maaf kijiye! Aapki search ke liye koi design nahi mila.</p>
+              <Link href="/" className="bg-gray-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-primary transition-all">
+                Browse Collection
+              </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
               {filteredProducts.map((product) => (
-                <div key={product.id} className="group flex flex-col">
-                  <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-gray-50 mb-4 shadow-sm">
-                    <Link href={`/product/${product.id}`}>
-                      <img src={product.thumbnail} alt={product.name} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${product.stock <= 0 ? 'grayscale opacity-70' : ''}`} />
-                    </Link>
-                    {product.stock > 0 && (
-                      <div className="absolute bottom-4 left-4 right-4 translate-y-[120%] group-hover:translate-y-0 transition-transform duration-500">
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            addItem({ id: product.id, name: product.name, price: `₹${product.selling_price}`, image: product.thumbnail, size: product.size || "Free Size", color: product.color || "Multi", quantity: 1 });
-                          }}
-                          className="w-full bg-white text-gray-900 py-3 rounded-xl shadow-xl font-bold text-xs uppercase hover:bg-black hover:text-white transition-all"
-                        >
-                          <ShoppingBag size={14} /> Add to Cart
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <Link href={`/product/${product.id}`} className="space-y-1">
-                    <h3 className="font-serif text-lg text-gray-900 line-clamp-1">{product.name}</h3>
-                    <div className="flex items-center gap-3 mt-1">
-                       <p className="text-primary font-bold text-lg">₹{product.selling_price.toLocaleString()}</p>
-                       <p className="text-gray-400 line-through text-xs italic">₹{product.original_price.toLocaleString()}</p>
-                    </div>
-                  </Link>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}
@@ -156,7 +139,7 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" size={48} /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-primary" size={48} /></div>}>
       <SearchContent />
     </Suspense>
   );

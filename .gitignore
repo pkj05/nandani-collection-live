@@ -1,0 +1,18 @@
+# Python / Django Garbage
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+.env
+
+# Django Media & Static (Ye upload nahi karne)
+/backend/media/
+/backend/staticfiles/
+/backend/venv/
+/venv/
+
+# Next.js / Node Garbage
+/frontend/node_modules/
+/frontend/.next/
+/frontend/.env.local
+/frontend/.env

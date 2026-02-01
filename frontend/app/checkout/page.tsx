@@ -2,19 +2,18 @@
 
 import { useState } from "react";
 import { useCartStore } from "@/store/useCartStore"; 
-import { ShieldCheck, Truck, CreditCard, Smartphone, QrCode, Banknote, ChevronLeft, Ticket, AlertCircle, Loader2 } from "lucide-react";
+import { ShieldCheck, Truck, CreditCard, Smartphone, QrCode, Banknote, ChevronLeft, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, clearCart } = useCartStore(); 
+  const { cart, clearCart } = useCartStore() as any; 
   const [paymentMethod, setPaymentMethod] = useState("upi");
   const [coupon, setCoupon] = useState("");
   const [isCouponApplied, setIsCouponApplied] = useState(false);
   const [loading, setLoading] = useState(false); 
   
-  // Validation State - Kept exactly as your original
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -23,11 +22,12 @@ export default function CheckoutPage() {
   });
   const [error, setError] = useState("");
 
-  // Calculation Logic - Kept exactly as your original
-  const subtotal = cart.reduce((acc, item) => {
+  // --- CALCULATION LOGIC ---
+  const subtotal = cart.reduce((acc: number, item: any) => {
+    // Price clean karne ka logic (agar '₹1,500' string ho toh number banao)
     const price = typeof item.price === "string" 
       ? parseInt(item.price.replace(/[^\d]/g, "")) 
-      : item.price;
+      : Number(item.price);
     return acc + (price || 0) * (item.quantity || 1);
   }, 0);
 
@@ -35,8 +35,8 @@ export default function CheckoutPage() {
   const shipping = subtotal > 1499 ? 0 : 99;
   const total = subtotal - discount + shipping;
 
-  // Final Order Handler with Bug Fixes
   const handlePlaceOrder = async () => {
+    // 1. Validation
     if (!form.name || form.phone.length !== 10 || !form.address || !form.pincode) {
       setError("Please fill all details correctly. Phone must be 10 digits.");
       return;
@@ -44,7 +44,7 @@ export default function CheckoutPage() {
     setError("");
     setLoading(true);
 
-    // Backend data mapping following your Schema
+    // 2. Prepare Data
     const orderData = {
       full_name: form.name,
       phone_number: `+91${form.phone}`, 
@@ -53,38 +53,46 @@ export default function CheckoutPage() {
       payment_method: paymentMethod,
       total_amount: total,
       shipping_charges: shipping,
-      items: cart.map(item => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        // TypeScript Error Fix: Store mein 'size' name use ho raha hai
-        size: item.size || "Free Size", 
-        color: item.color || "Multi"
-      }))
+      
+      // --- ITEMS LIST FIX ---
+      items: cart.map((item: any) => {
+        const itemPrice = typeof item.price === "string" 
+           ? parseInt(item.price.replace(/[^\d]/g, "")) 
+           : Number(item.price);
+
+        return {
+          product_id: item.id,
+          variant_id: item.variant_id, // Ye sabse important hai check karne ke liye
+          size_id: item.size_id || null, 
+          quantity: item.quantity,
+          price: itemPrice,  // Price explicit bhej rahe hain
+          size: item.size || "Standard", 
+          color: item.color || "Default" // Color text bhi bhej rahe hain
+        };
+      })
     };
 
+    // 🔍 DEBUG: Console mein data check karne ke liye
+    console.log("🚀 SENDING DATA TO BACKEND:", JSON.stringify(orderData, null, 2));
+
     try {
-      // Calling your Django Ninja API with Laptop IP
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/create`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        clearCart(); // Safely clear the cart after success
-        // Redirect to success page with ID
+        clearCart(); 
         router.push(`/checkout/success?id=${result.order_id}`);
-          
       } else {
         setError(result.message || "Something went wrong.");
       }
     } catch (err) {
+      console.error("Checkout Error:", err);
       setError("Server connection failed. Is your Django backend running?");
-      console.error("API Error:", err);
     } finally {
       setLoading(false);
     }
@@ -100,7 +108,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-12">
+    <div className="bg-gray-50 min-h-screen py-12 pb-24 lg:pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <Link href="/" className="inline-flex items-center text-sm text-gray-500 hover:text-primary mb-8 transition-colors group">
@@ -109,10 +117,10 @@ export default function CheckoutPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           
-          {/* LEFT: Shipping & Payment Section */}
+          {/* LEFT: Forms */}
           <div className="lg:col-span-8 space-y-8">
-            
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            {/* Delivery Form */}
+            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-2 text-gray-900">
                 <Truck className="text-primary" /> Delivery Details
               </h2>
@@ -123,7 +131,7 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <input 
                   type="text" placeholder="Full Name" 
                   className="w-full p-3 border rounded-lg outline-primary bg-gray-50/50"
@@ -159,7 +167,8 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            {/* Payment Selection */}
+            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-2 text-gray-900">
                 <ShieldCheck className="text-primary" /> Payment Method
               </h2>
@@ -175,7 +184,7 @@ export default function CheckoutPage() {
                     key={item.id}
                     type="button"
                     onClick={() => setPaymentMethod(item.id)}
-                    className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all hover:shadow-md ${paymentMethod === item.id ? "border-primary bg-primary/5 shadow-inner" : "border-gray-100"}`}
+                    className={`p-4 border-2 rounded-xl flex items-center gap-4 transition-all hover:shadow-md ${paymentMethod === item.id ? "border-primary bg-primary/5" : "border-gray-100"}`}
                   >
                     <div className="text-primary">{item.icon}</div>
                     <div className="text-left">
@@ -188,46 +197,53 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* RIGHT: Summary Section */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* RIGHT: Order Summary */}
+          <div className="lg:col-span-4">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-24">
               <h3 className="text-xl font-bold mb-6 border-b pb-4 text-gray-900">Order Summary</h3>
               
+              <div className="max-h-48 overflow-y-auto mb-6 space-y-3 pr-2 scrollbar-hide">
+                {cart.map((item: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                        <div className="flex flex-col">
+                            <span className="font-bold text-gray-800 line-clamp-1">{item.name}</span>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-tighter">{item.color} | {item.size} x {item.quantity}</span>
+                        </div>
+                        <span className="font-medium">₹{(Number(item.price) * item.quantity).toLocaleString()}</span>
+                    </div>
+                ))}
+              </div>
+
               <div className="mb-6">
-                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block tracking-wider">Discount Coupon</label>
                 <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input 
-                      type="text" placeholder="Apply Coupon"
-                      className="w-full pl-10 pr-3 py-2 border rounded-lg text-sm outline-primary uppercase"
-                      value={coupon}
-                      onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                    />
-                  </div>
+                  <input 
+                    type="text" placeholder="Coupon"
+                    className="flex-1 p-2 border rounded-lg text-sm outline-primary uppercase"
+                    value={coupon}
+                    onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+                  />
                   <button 
                     onClick={() => setIsCouponApplied(!isCouponApplied)}
-                    className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors"
+                    className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm font-bold"
                   >
                     {isCouponApplied ? "Remove" : "Apply"}
                   </button>
                 </div>
-                {isCouponApplied && <p className="text-xs text-green-600 mt-2 font-medium">Coupon applied successfully!</p>}
               </div>
 
               <div className="space-y-3 text-sm border-t pt-4">
                 <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span>
+                  <span>Subtotal ({cart.length} items)</span>
                   <span>₹{subtotal.toLocaleString()}</span>
                 </div>
                 {isCouponApplied && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-green-600 font-medium">
                     <span>Discount (10%)</span>
                     <span>-₹{discount.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-gray-600">
-                  <span>Shipping Charges</span>
+                  <span>Shipping</span>
                   <span className={shipping === 0 ? "text-green-600 font-bold" : ""}>
                     {shipping === 0 ? "FREE" : `₹${shipping}`}
                   </span>
@@ -241,20 +257,10 @@ export default function CheckoutPage() {
               <button 
                 onClick={handlePlaceOrder}
                 disabled={loading}
-                className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold mt-8 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-gray-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full bg-gray-900 text-white py-4 rounded-xl font-black mt-8 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-gray-200 disabled:bg-gray-400"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="animate-spin" size={20} /> Processing...
-                  </>
-                ) : (
-                  `Place Order via ${paymentMethod.toUpperCase()}`
-                )}
+                {loading ? <Loader2 className="animate-spin" /> : `Place Order`}
               </button>
-              
-              <p className="text-[10px] text-center text-gray-400 mt-4 uppercase tracking-tighter">
-                Secure 256-bit SSL Encrypted Payment
-              </p>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingBag, Heart, Menu, X, Loader2 } from "lucide-react"; 
+import { Search, ShoppingBag, Heart, Menu, X } from "lucide-react"; 
 import { useState, useEffect, useRef } from "react"; 
 import { useRouter } from "next/navigation"; 
 import { useCartStore } from "@/store/useCartStore";
@@ -15,7 +15,6 @@ const Header = () => {
   // --- States ---
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
 
@@ -23,12 +22,12 @@ const Header = () => {
   const toggleCart = useCartStore((state) => state.toggleCart);
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  // Keyboard dismiss logic: Sirf mobile par aur 2 sec wait ke baad
+  // Keyboard dismiss logic
   const dismissKeyboardWithDelay = () => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setTimeout(() => {
         (document.activeElement as HTMLElement)?.blur();
-      }, 2000); // 2 Seconds ka wait
+      }, 2000); 
     }
   };
 
@@ -66,8 +65,6 @@ const Header = () => {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?search=${encodeURIComponent(searchTerm)}`);
         const data = await response.json();
         setSuggestions(data.slice(0, 5)); 
-        
-        // Laptop par kuck nahi hoga, mobile par 2 sec baad keyboard jayega
         if (data.length > 0) dismissKeyboardWithDelay();
       } catch (error) { console.error(error); }
       finally { setIsSearching(false); }
@@ -81,55 +78,67 @@ const Header = () => {
     setIsSearchOpen(false);
     setSearchTerm("");
     setSuggestions([]);
-    setShowSuggestions(false);
   };
 
-  // Search Submit Handler
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (searchTerm.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
       closeEverything();
-      // Keyboard ko turant band karein jab search page par jayein
       (document.activeElement as HTMLElement)?.blur();
     }
   };
 
+  // --- APPLE STYLE ICON CLASS ---
+  // White bg, subtle border, soft shadow, hover pop effect
+  const iconBtnClass = "w-9 h-9 flex items-center justify-center rounded-full bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-gray-700 transition-all duration-300 hover:scale-110 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:text-black active:scale-95";
+
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-100">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100/50">
       
-      {/* TOP ANNOUNCEMENT BAR */}
-      <div className="bg-primary text-primary-foreground text-xs py-2 text-center tracking-wide font-medium">
-        Free Shipping on orders above ₹1499 | Easy Returns
+      {/* TOP ANNOUNCEMENT BAR (Sleeker) */}
+      <div className="bg-[#8B3E48] text-white text-[10px] py-1 text-center tracking-widest font-medium uppercase">
+        Free Shipping on orders above ₹1499
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
+      {/* MAIN HEADER (Height reduced to h-14 = 56px) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex justify-between items-center">
         
         {/* LEFT: Menu & Desktop Links */}
-        <div className="flex items-center gap-6">
-          <button className="md:hidden p-2 text-gray-600 rounded-full" onClick={() => setIsMenuOpen(true)}>
-            <Menu size={24} />
+        <div className="flex items-center gap-4">
+          <button className={`md:hidden ${iconBtnClass}`} onClick={() => setIsMenuOpen(true)}>
+            <Menu size={18} />
           </button>
-          <div className="hidden md:flex gap-8 text-sm font-medium text-gray-800 uppercase tracking-wide">
+          
+          <div className="hidden md:flex gap-6 text-xs font-bold text-gray-600 uppercase tracking-widest">
             {categories.map((cat) => (
-              <Link key={cat.id} href={`/${cat.name.toLowerCase()}`} className="hover:text-primary transition-colors">{cat.name}</Link>
+              <Link key={cat.id} href={`/${cat.name.toLowerCase()}`} className="hover:text-black transition-colors relative group">
+                {cat.name}
+                <span className="absolute left-0 -bottom-1 w-0 h-[1px] bg-black transition-all group-hover:w-full"></span>
+              </Link>
             ))}
           </div>
         </div>
 
-        {/* CENTER: LOGO */}
-        <Link href="/" className="text-3xl md:text-4xl font-serif font-bold text-gray-900 tracking-tight">Nandani</Link>
+        {/* CENTER: LOGO (Size Adjusted) */}
+        <Link href="/" className="text-2xl md:text-3xl font-serif font-bold text-gray-900 tracking-tight">
+            Nandani
+        </Link>
 
-        {/* RIGHT: ICONS */}
-        <div className="flex items-center gap-4 md:gap-6">
-          <button className="p-2 text-gray-700 hover:text-primary" onClick={() => setIsSearchOpen(true)}>
-            <Search size={22} />
+        {/* RIGHT: 3D ICONS */}
+        <div className="flex items-center gap-3">
+          <button className={iconBtnClass} onClick={() => setIsSearchOpen(true)}>
+            <Search size={18} />
           </button>
-          <button className="hidden md:block p-2 text-gray-700 hover:text-primary"><Heart size={20} /></button>
-          <button onClick={toggleCart} className="p-2 relative text-gray-700 hover:text-primary transition-transform active:scale-90">
-            <ShoppingBag size={20} />
+          
+          <button className={`hidden md:flex ${iconBtnClass}`}>
+            <Heart size={18} />
+          </button>
+          
+          <button onClick={toggleCart} className={`${iconBtnClass} relative`}>
+            <ShoppingBag size={18} />
             {cartCount > 0 && (
-              <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full animate-in zoom-in">
+              <span className="absolute -top-1 -right-1 bg-[#8B3E48] text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-sm animate-in zoom-in border border-white">
                 {cartCount}
               </span>
             )}
@@ -137,25 +146,23 @@ const Header = () => {
         </div>
       </div>
 
-      {/* --- REFINED APPLE-STYLE SEARCH OVERLAY --- */}
+      {/* --- REFINED SEARCH OVERLAY --- */}
       {isSearchOpen && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center p-4 pt-10 animate-in fade-in duration-300">
-          {/* Backdrop click to close */}
-          <div className="absolute inset-0 bg-black/5 backdrop-blur-md" onClick={closeEverything}></div>
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-xl" onClick={closeEverything}></div>
           
           <div ref={suggestionRef} className="relative w-full max-w-[95%] md:max-w-2xl z-10 flex flex-col gap-4">
             
-            {/* Search Input with Clear Button Logic */}
-            <div className="flex items-center gap-3 bg-white/90 backdrop-blur-2xl p-2 rounded-2xl shadow-xl border border-white/40 w-full">
+            <div className="flex items-center gap-3 bg-white/80 backdrop-blur-xl p-2 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 w-full">
               <Search className="ml-3 text-gray-400" size={18} />
               <form onSubmit={handleSearch} className="flex-1">
                 <input 
                   autoFocus
                   type="text" 
-                  placeholder="Search designer suits, sarees..."
+                  placeholder="Search designer suits..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-transparent py-2 outline-none text-gray-900 placeholder:text-gray-400"
+                  className="w-full bg-transparent py-2 outline-none text-gray-900 placeholder:text-gray-400 font-medium"
                 />
               </form>
               <button 
@@ -169,31 +176,30 @@ const Header = () => {
               </button>
             </div>
 
-            {/* Results Box with functional 'View All' */}
+            {/* Results Box */}
             {searchTerm.length >= 2 && suggestions.length > 0 && (
-              <div className="w-full bg-white/70 backdrop-blur-3xl rounded-3xl shadow-2xl border border-white/30 overflow-hidden animate-in slide-in-from-top-4 duration-500">
+              <div className="w-full bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 overflow-hidden animate-in slide-in-from-top-4 duration-500">
                 <div className="max-h-[50vh] overflow-y-auto custom-scrollbar">
-                  <div className="p-3 bg-black/5 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Matches Found</div>
+                  <div className="p-3 bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Matches Found</div>
                   {suggestions.map((item) => (
                     <Link
                       key={item.id}
                       href={`/product/${item.id}`}
                       onClick={closeEverything}
-                      className="flex items-center gap-4 p-4 hover:bg-white/50 border-b border-black/5 last:border-0 transition-colors"
+                      className="flex items-center gap-4 p-3 hover:bg-white border-b border-gray-100 last:border-0 transition-colors"
                     >
-                      <img src={item.thumbnail} className="w-12 h-16 object-cover rounded-lg shadow-sm" />
+                      <img src={item.thumbnail} className="w-10 h-14 object-cover rounded-md shadow-sm" />
                       <div>
                         <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</p>
-                        <p className="text-xs text-primary font-bold mt-1">₹{item.selling_price.toLocaleString()}</p>
+                        <p className="text-xs text-[#8B3E48] font-bold mt-0.5">₹{item.selling_price.toLocaleString()}</p>
                       </div>
                     </Link>
                   ))}
-                  {/* View All Button - Fixed Link Functionality */}
                   <button 
                     onClick={() => handleSearch()} 
-                    className="w-full py-4 bg-primary/10 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all border-t border-black/5"
+                    className="w-full py-4 bg-gray-50 text-[10px] font-bold uppercase tracking-widest text-gray-900 hover:bg-gray-100 transition-all border-t border-gray-100"
                   >
-                    View All Results for "{searchTerm}"
+                    View All Results
                   </button>
                 </div>
               </div>
@@ -202,18 +208,18 @@ const Header = () => {
         </div>
       )}
 
-      {/* --- MOBILE SIDE MENU --- */}
-      <div className={`fixed inset-0 bg-black/50 transition-opacity duration-300 md:hidden z-[55] ${isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`} onClick={() => setIsMenuOpen(false)}></div>
+      {/* --- MOBILE MENU --- */}
+      <div className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 md:hidden z-[55] ${isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`} onClick={() => setIsMenuOpen(false)}></div>
       <div className={`fixed top-0 left-0 h-full w-80 bg-white z-[60] shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-2xl font-serif font-bold text-gray-900">Nandani</h2>
-            <button onClick={() => setIsMenuOpen(false)} className="p-2 text-gray-500 rounded-full"><X size={24} /></button>
+            <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"><X size={20} /></button>
           </div>
-          <nav className="flex flex-col space-y-6">
-            <Link href="/" className="text-lg font-medium text-gray-800" onClick={() => setIsMenuOpen(false)}>Home</Link>
+          <nav className="flex flex-col space-y-4">
+            <Link href="/" className="text-lg font-bold text-gray-900" onClick={() => setIsMenuOpen(false)}>Home</Link>
             {categories.map((cat) => (
-              <Link key={cat.id} href={`/${cat.name.toLowerCase()}`} className="text-lg font-medium text-gray-800 uppercase" onClick={() => setIsMenuOpen(false)}>{cat.name}</Link>
+              <Link key={cat.id} href={`/${cat.name.toLowerCase()}`} className="text-lg font-medium text-gray-600 hover:text-black uppercase" onClick={() => setIsMenuOpen(false)}>{cat.name}</Link>
             ))}
           </nav>
         </div>

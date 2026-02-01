@@ -1,52 +1,30 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google"; 
 import "./globals.css";
-
 import Header from "@/components/Header"; 
 import Footer from "@/components/Footer"; 
-import CartDrawer from "@/components/CartDrawer"; // 1. CartDrawer Import kiya
-import CartToast from "@/components/CartToast";
+import CartDrawer from "@/components/CartDrawer";
+// ❌ CartToast ka import hata diya
 
-const playfair = Playfair_Display({ 
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-});
-
-const inter = Inter({ 
-  subsets: ["latin"], 
-  variable: "--font-inter",
-  display: "swap",
-});
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Nandani Collection",
-  description: "Premium Ethnic Wear for Women",
+  description: "Premium Ethnic Wear",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${playfair.variable} ${inter.variable} antialiased flex flex-col min-h-screen`}>
-        
-        {/* 1. Header (Sabse Upar) */}
+    <html lang="en" className="scroll-smooth">
+      <body className={`${playfair.variable} ${inter.variable} antialiased font-sans flex flex-col min-h-screen`}>
         <Header />
-
-        {/* 2. Cart Drawer (Parde ke piche taiyar rahega) */}
         <CartDrawer />
-        <CartToast /> {/* Yahan add karein */}
-        {/* 3. Main Content (Beech me) */}
-        <main className="flex-grow">
-          {children}
-        </main>
-
-        {/* 4. Footer (Sabse Niche) */}
-        <Footer />
         
+        {/* ❌ Yahan se <CartToast /> hata diya hai */}
+        
+        <main className="flex-grow overflow-x-hidden">{children}</main>
+        <Footer />
       </body>
     </html>
   );

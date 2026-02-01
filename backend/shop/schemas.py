@@ -1,25 +1,41 @@
 from ninja import Schema
 from typing import List, Optional
 
-# 1. Product ki extra photos ke liye
+# 1. Product ki extra photos ke liye (Preserved)
 class ProductImageSchema(Schema):
-    image: str  # Sirf photo ka link jayega
+    image: str
 
-# 2. Product ki details (Jo customer ko dikhegi)
+# 2. Size aur Stock details ke liye (Naya Logic)
+class SizeVariantSchema(Schema):
+    id: int
+    size: str
+    stock: int
+    price: float # Base price + Adjustment
+    sku: str     # Auto-generated SKU
+
+# 3. Color Variant details (Circles aur Media ke liye)
+class VariantSchema(Schema):
+    id: int
+    color_name: str
+    color_code: str
+    thumbnail: str
+    video: Optional[str] = None # Preserved
+    stock: int # Suits/Saree ke liye common stock
+    images: List[str] # Gallery links
+    sizes: List[SizeVariantSchema] # Size wise details
+
+# 4. Main Product Schema (Jo customer ko dikhega)
 class ProductSchema(Schema):
     id: int
     name: str
-    category_name: str  # Hum ID nahi, Category ka naam bhejenge (Suits)
+    category_name: str # Category ID ki jagah naam (e.g. Suits)
     description: str
-    original_price: int
-    selling_price: int
-    # Discount hum calculate karke bhejenge (Optional logic later)
-    sku: str
-    stock: int
-    color: str
-    size: str
-    thumbnail: str
-    # List of extra images
-    images: List[ProductImageSchema] 
+    fabric: Optional[str] = None # Preserved
+    base_price: float # Selling price ka naya naam
+    original_price: Optional[float] = None # Preserved
+    has_size: bool # Category level flag
     
-    # Note: Humne 'supplier' yahan nahi likha, to wo frontend par nahi jayega. ✅
+    # List of Variants (Ab circles aur gallery isi se banegi)
+    variants: List[VariantSchema]
+    
+    # Note: 'supplier' humne yahan bhi nahi rakha, taaki wo frontend par na jaye ✅

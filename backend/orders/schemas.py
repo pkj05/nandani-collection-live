@@ -2,10 +2,13 @@ from ninja import Schema
 from typing import List, Optional
 
 class OrderItemSchema(Schema):
-    product_id: int
+    product_id: int      # Parent Product ID
+    variant_id: Optional[int] = None # Color ID (Frontend se aa raha hai)
+    size_id: Optional[int] = None    # Size ID (Frontend se aa raha hai)
     quantity: int
     size: str
-    color: Optional[str] = None
+    color: Optional[str] = None # Frontend se color name (e.g. "Red")
+    price: Optional[float] = 0.0 # Frontend se price
 
 class OrderCreateSchema(Schema):
     full_name: str

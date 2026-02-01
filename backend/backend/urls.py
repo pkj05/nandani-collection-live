@@ -1,16 +1,19 @@
 from django.contrib import admin
-from django.urls import path, re_path
+from django.urls import path, re_path, include  # 1. Yahan 'include' add kiya hai
 from django.conf import settings
-from django.conf.urls.static import static
 from django.views.static import serve
-from shop.api import api  # आपकी API file
+from shop.api import api 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', api.urls),  # API का रास्ता
+    
+    # 2. YE LINE SABSE ZAROORI HAI (Iske bina nested form nahi chalega)
+    path('nested_admin/', include('nested_admin.urls')),
+    
+    path('api/', api.urls),
 ]
 
-# Media और Static Files दिखाने का सबसे पावरफुल तरीका (Server के लिए)
+# Media aur Static Files Serving
 urlpatterns += [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),

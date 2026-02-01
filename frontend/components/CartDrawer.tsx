@@ -1,178 +1,162 @@
 "use client";
 
+import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
-import { X, ShoppingBag, Plus, Minus, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const CartDrawer = () => {
-  // Store से डेटा और फंक्शन्स लिए
-  const { cart, isOpen, toggleCart, removeItem, updateQuantity } = useCartStore();
+export default function CartDrawer() {
+  const { cart, isOpen, toggleCart, removeItem, updateQuantity } = useCartStore() as any;
   
-  // Naya State: Cart items ka live stock store karne ke liye
-  const [productStocks, setProductStocks] = useState<{ [key: number]: number }>({});
-  const [stockLoading, setStockLoading] = useState(false);
-
-  // --- LIVE STOCK CHECK LOGIC ---
+  // Hydration Fix (Jhatka lagne se rokne ke liye)
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    const fetchLatestStocks = async () => {
-      if (cart.length === 0) return;
-      try {
-        setStockLoading(true);
-        const stockData: { [key: number]: number } = {};
-        
-        // Har cart item ke liye backend se latest stock mangao
-        for (const item of cart) {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?id=${item.id}`);
-          const data = await res.json();
-          if (data.length > 0) {
-            stockData[item.id] = data[0].stock;
-          }
-        }
-        setProductStocks(stockData);
-      } catch (error) {
-        console.error("Cart stock fetch error:", error);
-      } finally {
-        setStockLoading(false);
-      }
-    };
+    setMounted(true);
+  }, []);
 
-    if (isOpen) {
-      fetchLatestStocks();
-    }
-  }, [isOpen, cart.length]); // Drawer khulne par ya item delete hone par update hoga
+  if (!mounted) return null;
 
-  // Total Price calculate करने के लिए (Purana Logic)
-  const subtotal = cart.reduce((acc, item) => {
-    const rawPrice = item.price ? String(item.price).replace(/[^\d]/g, "") : "0";
-    const price = parseInt(rawPrice || "0");
-    return acc + price * (item.quantity || 1);
-  }, 0);
+  // Subtotal Calculation
+  const subtotal = cart.reduce((acc: number, item: any) => acc + (Number(item.price) * item.quantity), 0);
 
   return (
     <>
-      {/* 1. Black Overlay */}
+      {/* 1. BACKDROP (Andhera) */}
       <div 
-        className={`fixed inset-0 bg-black/50 z-[100] transition-opacity duration-300 ${
-          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-        onClick={toggleCart}
+        className={`fixed inset-0 bg-black/40 z-[100] backdrop-blur-sm transition-opacity duration-300
+        ${isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}`}
+        onClick={toggleCart} 
       />
 
-      {/* 2. Side Panel */}
-      <div className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white z-[110] shadow-2xl transform transition-transform duration-300 ease-in-out ${
-        isOpen ? "translate-x-0" : "translate-x-full"
-      }`}>
+      {/* 2. DRAWER PANEL (Side se aane wala) */}
+      <div 
+        className={`fixed inset-y-0 right-0 z-[101] w-full max-w-md bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col
+        ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+      >
         
-        {/* Header Section */}
-        <div className="flex justify-between items-center p-6 border-b">
+        {/* HEADER */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-white z-10">
           <div className="flex items-center gap-2">
-            <ShoppingBag size={20} className="text-primary" />
-            <h2 className="text-xl font-bold font-serif uppercase tracking-wider">Your Cart</h2>
-            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">{cart.length} Items</span>
+            <ShoppingBag size={20} />
+            <h2 className="text-lg font-serif font-bold">Shopping Bag ({cart.length})</h2>
           </div>
-          <button onClick={toggleCart} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={24} />
+          <button 
+            onClick={toggleCart}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        {/* Items List Section */}
-        <div className="flex-1 overflow-y-auto p-6 h-[calc(100vh-250px)]">
+        {/* CART ITEMS LIST */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {cart.length === 0 ? (
-            <div className="text-center py-20 flex flex-col items-center">
-              <ShoppingBag size={64} className="text-gray-200 mb-4" />
-              <p className="text-gray-500 mb-6 font-medium">Your cart is feeling light!</p>
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 text-gray-400">
+              <ShoppingBag size={64} strokeWidth={1} className="opacity-20" />
+              <p className="text-lg font-medium">Your bag is empty.</p>
               <button 
                 onClick={toggleCart}
-                className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-opacity"
+                className="text-black underline font-bold hover:text-gray-600 transition-colors"
               >
-                Go Shopping
+                Continue Shopping
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {cart.map((item) => {
-                const maxStock = productStocks[item.id] ?? 99; // Backend se aaya stock ya fallback
-                const isLimitReached = item.quantity >= maxStock;
+            cart.map((item: any) => (
+              // KEY FIX: Unique key for variants
+              <div key={`${item.variant_id}-${item.size_id}`} className="flex gap-4 group">
+                
+                {/* Image */}
+                <div className="h-28 w-24 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                  <img 
+                    src={item.image} 
+                    alt={item.name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.src = "https://placehold.co/100?text=IMG"; }} 
+                  />
+                </div>
 
-                return (
-                  <div key={`${item.id}-${item.size}`} className="flex gap-4 border-b border-gray-50 pb-6 relative group">
-                    <div className="h-24 w-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-1">
-                        <h3 className="font-bold text-gray-900 leading-tight pr-4">{item.name}</h3>
-                        <button onClick={() => removeItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-400 mb-3">Size: {item.size} | Color: {item.color}</p>
+                {/* Details */}
+                <div className="flex-1 flex flex-col justify-between py-1">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-gray-900 line-clamp-1">{item.name}</h3>
                       
-                      <div className="flex justify-between items-center">
-                        {/* Functional Quantity Control */}
-                        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-                          <button 
-                            onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                            className="px-3 py-1 hover:bg-white transition-colors"
-                          >-</button>
-                          <span className="px-2 text-sm font-bold w-8 text-center">{item.quantity}</span>
-                          <button 
-                            onClick={() => {
-                              // Stock Limit Check before adding
-                              if (item.quantity < maxStock) {
-                                updateQuantity(item.id, item.quantity + 1);
-                              }
-                            }}
-                            className={`px-3 py-1 transition-colors ${isLimitReached ? 'text-gray-300 cursor-not-allowed bg-gray-100' : 'hover:bg-white'}`}
-                          >+</button>
-                        </div>
-                        <span className="font-bold text-gray-900">
-                          ₹{(item.price ? parseInt(String(item.price).replace(/[^\d]/g, "")) : 0).toLocaleString()}
-                        </span>
-                      </div>
-
-                      {/* Stock Warning Message */}
-                      {isLimitReached && (
-                        <p className="text-[10px] text-red-500 font-bold mt-2 uppercase tracking-tight italic">
-                          Maximum available stock reached
-                        </p>
-                      )}
+                      {/* DELETE BUTTON */}
+                      <button 
+                        onClick={() => removeItem(item.variant_id, item.size_id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
+                    
+                    <p className="text-xs text-gray-500 uppercase font-medium mt-1">
+                      {item.color} {item.size !== "Standard" && `/ ${item.size}`}
+                    </p>
+                    <p className="text-sm font-bold mt-1">₹{Number(item.price).toLocaleString()}</p>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Quantity & Stock Logic */}
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center border border-gray-200 rounded-lg h-9">
+                      
+                      {/* ✅ MINUS (Fixed: Extra safety check) */}
+                      <button 
+                        onClick={() => {
+                            if (item.quantity > 1) {
+                                updateQuantity(item.variant_id, item.size_id, item.quantity - 1);
+                            }
+                        }}
+                        className="w-8 h-full flex items-center justify-center hover:bg-gray-50 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={item.quantity <= 1}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      
+                      <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
+                      
+                      {/* PLUS (Zyada karo - Stock Check) */}
+                      <button 
+                        onClick={() => updateQuantity(item.variant_id, item.size_id, item.quantity + 1)}
+                        className={`w-8 h-full flex items-center justify-center rounded-r-lg transition-colors
+                          ${item.quantity >= item.stock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'hover:bg-gray-50 text-black'}`}
+                        disabled={item.quantity >= item.stock}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+
+                    {/* Stock Alert Label */}
+                    {item.quantity >= item.stock && (
+                      <span className="text-[10px] text-red-500 font-bold uppercase animate-pulse">Max Limit</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </div>
 
-        {/* Footer: Total & Checkout Button */}
+        {/* FOOTER (Checkout) */}
         {cart.length > 0 && (
-          <div className="absolute bottom-0 left-0 w-full bg-white border-t p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-gray-500 font-medium">Subtotal</span>
-              <span className="text-2xl font-bold text-primary">₹{subtotal.toLocaleString()}</span>
+          <div className="border-t border-gray-100 p-5 space-y-4 bg-gray-50/50">
+            <div className="flex justify-between items-center text-lg font-bold">
+              <span>Subtotal</span>
+              <span>₹{subtotal.toLocaleString()}</span>
             </div>
+            <p className="text-xs text-gray-500 text-center">Shipping & taxes calculated at checkout.</p>
+            
             <Link 
               href="/checkout" 
-              className="w-full bg-primary text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:opacity-95 transition-opacity shadow-lg shadow-primary/20"
               onClick={toggleCart}
+              className="w-full py-4 bg-black text-white rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-[0.98] transition-all"
             >
-              Secure Checkout <CreditCard size={18} />
+              Checkout <ArrowRight size={18} />
             </Link>
-            <p className="text-center text-[10px] text-gray-400 mt-4 uppercase tracking-widest">
-              Shipping & Taxes calculated at checkout
-            </p>
           </div>
         )}
       </div>
     </>
   );
-};
-
-// CreditCard icon helper
-const CreditCard = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
-);
-
-export default CartDrawer;
+}
