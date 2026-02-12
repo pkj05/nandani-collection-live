@@ -1,0 +1,69 @@
+# ---------------------------------
+# 1. SECRETS (Sabse Important) 🔐
+# ---------------------------------
+backend/firebase-key.json
+firebase-key.json
+*.pem
+
+# ---------------------------------
+# 2. PYTHON / DJANGO (Backend) 🐍
+# ---------------------------------
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+*.pot
+*.pyc
+
+# Database (Git par DB upload karna safe nahi hota)
+db.sqlite3
+backend/db.sqlite3
+db.sqlite3-journal
+
+# ---------------------------------
+# 3. NODE / NEXT.JS (Frontend) ⚛️
+# ---------------------------------
+/node_modules
+/frontend/node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js build files
+/.next/
+/out/
+/frontend/.next/
+/build
+
+# ---------------------------------
+# 4. ENVIRONMENT FILES 🌍
+# ---------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+/frontend/.env.local
+/frontend/.env
+
+# ---------------------------------
+# 5. MISC / SYSTEM FILES
+# ---------------------------------
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.vercel
+*.tsbuildinfo
+next-env.d.ts

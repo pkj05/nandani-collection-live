@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "nandani-collection",
+  "private_key_id": "9dfd710bc6831a0629b7831b6f94c2527e47c829",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC+wRIzRWu3ks+O\nH2Rdxf3PTCVY/Uip1qVuhNjQOmWGwlQyfpdbrMN0uzcoZiy+s0j8fKPie+MCvGfm\nQTKNUWMPAwgJ8cJzdGtvw+yaqgZzpasyJ7HvSNY9EMk0WuzTzi0HSwRXi4lGeGUm\nnM4RRwJHozp8GxZXpAcnDYCxLHq/36Lcu9XxMxksm5yAR7yOfMv0eJk1MHQ7gtkq\nm/mjUnxhbcrFhOYP5X6B1fn55jsDsAuvpBMSYuJbvlFWizg89sZ5PfsmtX+8hmTd\nYyEFOxVGwZ4q8eM3cLYB0k5UVdhA1FQr+8JAB5IL+WwN8DZInLL11VC6gj5cnzQa\n0/mCw7CZAgMBAAECggEACBpri4IHcWTrLD5pJRKkFYpGi+E2lQBpRqieDTpt1aur\np/l4tIxCQVMypKSygedb0l35GEXq/tLCFyXt39L1Qk3+qW17tSvc5IKOKoPOglsn\nSpolFOUjNLTh1zeFl/nKL+Uf6hgjXLsAkQNYPaOmlSR594uvB0oQg7gvH1ekX0It\n1gmk+M7bqF5l5AbiiUin4q8qZ/dR9rg2C1bbSgfnRwC3I7ztYk5GIeTX7bavvHI3\n/4nuyI/VhJRG2EV8nDjWmdeUhuM2np6yQgH43nVTgsAWUnyA7IhrH5D+0Kmrr3H/\n6W4JajQ3I1pxfNNFFcyzMvij8av/t+5m2Z/uHfhgAQKBgQD9MA5IBosiyL0/XtYi\nPjqSMCzbHdgz8/7T3JY58KmsRoypmJnBdYcnjXQl/QfIgLisYxN8gAxLX0suv8ZY\nZqU1DYq3J1S+TaaM0kE7eR951+S5ey1jW7pP37/zo9iXDnE3vicRLCMuIJgK5Fbg\nh7S2hEcdnYGWqmQfHVqVt5KGOQKBgQDA33v9gdgagdcq4nnTrWP1C71MJeYM9yG+\nW4x+4XJBfjC/qZoeydkmYzBfhdLpZVx7F2v1+XQxECWUMZbQ96gc8cCoLzfKF5S6\nja+b8cqBrcvgCUE+SqtlZhtUpuGi7uv/bIxWkqOIAU3O1sVMF4vwtCUan/NJLITB\n3Hue1l19YQKBgQDW+tn1gFDdzTMbvsv1sX8MKAm+V93/ZxsmC3QnaFi5pgHD84YC\nhWeoRuyrYOkd72ZfQZUHLrbBvP1aiY3B/A4lOQVitOu41rgndFPdSuBWFeHpOFT2\nu6k8LxGOr721rZamrTgA1chdX2GaRf4akj/4heLYm6ewJafz33nODFxGyQKBgCp5\nzVOiIdaMm7dNEylj+SyBPlojyos2bc7/WGyk98WmpdO/5To8l78VfxS6Yx2Vfg15\ntgQAwO8BMFV3qlAxCmv9bcFcTLwL/2wqQe9lC4UNomWfhCfUx/RXzVMSQYThe0XQ\nQQPb3XnZV6pisCa21NHYyocXjLuju0T6apsreIFhAoGBAKCCo0uWoogga8xesHS/\nt9JJ3Q4y3llpSQwzaxUkVOaMK43AMAzcNgzTlf9I3jQmA3iaBKegvgPhrl4lVHHC\n+QuQFCjMxxoeS3Yt73oFghKYqqlA/GSHwyvykSlc7Hk4bzfexHN578c5ezJBYIfD\nEy9qq+ZTtQ/9T+FzBqZOj1da\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@nandani-collection.iam.gserviceaccount.com",
+  "client_id": "100282510067925603283",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40nandani-collection.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
