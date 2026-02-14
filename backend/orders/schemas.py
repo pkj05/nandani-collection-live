@@ -24,6 +24,11 @@ class OrderOutSchema(Schema):
     payment_method: str
     total_amount: float
     shipping_charges: float
+    
+    # ✅ Discount Info (Tracking page par dikhane ke liye)
+    discount_amount: float = 0.0
+    applied_coupon_code: Optional[str] = None # Coupon ka naam dikhane ke liye
+    
     status: str
     created_at: datetime
     # ✅ ये लाइन लिस्ट दिखाने के लिए सबसे ज़रूरी है
@@ -53,6 +58,11 @@ class OrderCreateSchema(Schema):
     payment_method: str
     total_amount: float
     shipping_charges: float
+    
+    # ✅ Coupon Logic Input
+    # Jab user coupon apply karega toh ye code backend pe jayega
+    coupon_code: Optional[str] = None 
+    
     items: List[OrderItemCreateSchema]
 
 # ==========================================

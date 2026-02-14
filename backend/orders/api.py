@@ -1,11 +1,13 @@
 from ninja import Router, Schema
-from typing import List
+from typing import List, Optional
 from .schemas import OrderCreateSchema, OrderOutSchema 
 from .models import Order, OrderItem
 from shop.models import SizeVariant
+from coupons.models import Coupon # ✅ Coupon model import kiya
 from django.db import transaction, models
 from django.contrib.auth import get_user_model
 from ninja_jwt.authentication import JWTAuth 
+from decimal import Decimal
 
 User = get_user_model()
 router = Router()
@@ -16,30 +18,62 @@ class MessageSchema(Schema):
     message: str
 
 # --- 1. POST: Create Order (Guest & Login dono ke liye) ---
-# response me 200, 400, aur 404 define kiye hain taaki ConfigError na aaye
 @router.post("/create", response={200: dict, 400: MessageSchema, 404: MessageSchema})
 def create_order(request, data: OrderCreateSchema):
     try:
         with transaction.atomic():
             # --- GUEST CHECKOUT LOGIC (AUTO-SYNC) ---
-            # Phone number ke hisab se user dhundo ya guest user ki tarah handle karo
             user_instance = None
             if data.phone_number:
-                # Agar phone number se user pehle se hai, toh order usse link kar do
                 user_instance = User.objects.filter(phone_number=data.phone_number).first()
+
+            # --- COUPON VALIDATION & CALCULATION (NEW) ---
+            coupon_instance = None
+            final_discount = Decimal('0.00')
+            
+            # Agar frontend se coupon_code aaya hai (Schema me coupon_code field hona chahiye)
+            coupon_code = getattr(data, 'coupon_code', None)
+            
+            if coupon_code:
+                try:
+                    coupon = Coupon.objects.get(code__iexact=coupon_code, active=True)
+                    is_valid, msg = coupon.is_valid()
+                    
+                    if is_valid:
+                        # Re-calculate discount on backend for security
+                        cart_total = Decimal(str(data.total_amount))
+                        
+                        if cart_total >= coupon.min_order_value:
+                            if coupon.coupon_type == 'FLAT':
+                                final_discount = coupon.discount_value
+                            else: # PERCENTAGE
+                                final_discount = (coupon.discount_value / Decimal('100')) * cart_total
+                                if coupon.max_discount_amount and final_discount > coupon.max_discount_amount:
+                                    final_discount = coupon.max_discount_amount
+                            
+                            coupon_instance = coupon
+                            # Coupon usage count badhao
+                            coupon.times_used += 1
+                            coupon.save()
+                except Coupon.DoesNotExist:
+                    pass # Galat coupon hai toh discount 0 rahega
 
             # 1. Order Create Karo
             order = Order.objects.create(
-                user=user_instance, # ✅ Link to user if exists
+                user=user_instance,
                 full_name=data.full_name,
                 phone_number=data.phone_number,
                 email=data.email,
                 address=data.address,
                 pincode=data.pincode,
                 payment_method=data.payment_method,
-                total_amount=data.total_amount,
+                
+                # Backend calculation use karein security ke liye
+                total_amount=data.total_amount, 
+                discount_amount=final_discount, # ✅ Saved backend calculated discount
+                applied_coupon=coupon_instance, # ✅ Link coupon model
+                
                 shipping_charges=data.shipping_charges,
-                discount_amount=0,
                 status='pending'
             )
 
@@ -47,19 +81,16 @@ def create_order(request, data: OrderCreateSchema):
             for item in data.items:
                 size_var = None
 
-                # --- SMART LOOKUP LOGIC (As provided by you) ---
-                # Step A: Frontend ne Size ID bheja hai
+                # --- SMART LOOKUP LOGIC ---
                 if hasattr(item, 'size_id') and item.size_id:
                     size_var = SizeVariant.objects.select_related('variant__product').get(id=item.size_id)
                 
-                # Step B: Variant ID + Size lookup
                 elif hasattr(item, 'variant_id') and item.variant_id:
                      size_var = SizeVariant.objects.select_related('variant__product').get(
                          variant_id=item.variant_id, 
                          size=item.size
                      )
                 
-                # Step C: Fallback (Product ID + Color + Size)
                 else:
                     size_var = SizeVariant.objects.select_related('variant__product').filter(
                         variant__product_id=item.product_id,
@@ -79,13 +110,8 @@ def create_order(request, data: OrderCreateSchema):
                     order=order,
                     size_variant=size_var,
                     product_name=size_var.variant.product.name,
-                    
-                    # Frontend ki price use karo (Taaki coupon/discounted price save ho)
                     price=item.price if item.price > 0 else size_var.variant.product.base_price,
-                    
                     quantity=item.quantity,
-                    
-                    # Metadata handling
                     size=item.size,
                     color=item.color if item.color else size_var.variant.color_name
                 )
@@ -94,7 +120,6 @@ def create_order(request, data: OrderCreateSchema):
                 size_var.stock -= item.quantity
                 size_var.save()
 
-                # Agar 'FREE' size hai (Suit/Saree), toh Master Variant ka stock bhi kam karo
                 if size_var.size == 'FREE':
                     size_var.variant.stock -= item.quantity
                     size_var.variant.save()
@@ -104,25 +129,18 @@ def create_order(request, data: OrderCreateSchema):
     except SizeVariant.DoesNotExist:
         return 404, {"success": False, "message": "Selected product variant not found."}
     except Exception as e:
-        # Django automatically rolls back transaction on exception
         return 400, {"success": False, "message": str(e)}
 
 
 # --- 2. GET: My Orders (Logged-in User ke liye) ---
 @router.get("/my-orders", response=List[OrderOutSchema], auth=JWTAuth())
 def get_my_orders(request):
-    """
-    लॉगिन यूजर के फोन नंबर या यूजर आईडी से जुड़े सभी ऑर्डर्स फेच करेगा।
-    """
     user = request.auth 
     phone = str(user.phone_number)
     
-    # ✅ Robust Format Check: Phone number ko 10 digit me convert karke dono format check karna
-    # Agar phone number +91 ke bina hai to prefix add karein
-    clean_phone_10 = phone[-10:] # Last 10 digits
+    clean_phone_10 = phone[-10:] 
     phone_with_prefix = f"+91{clean_phone_10}"
     
-    # DEBUG: Terminal me check karne ke liye (python manage.py runserver window me dekhein)
     print(f"--- FETCHING ORDERS FOR: {phone} OR {phone_with_prefix} ---")
 
     orders = Order.objects.filter(

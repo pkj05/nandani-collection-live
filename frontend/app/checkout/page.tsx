@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore"; 
-import { ShieldCheck, Truck, Banknote, ChevronLeft, AlertCircle, Loader2, User, Smartphone } from "lucide-react";
+import { ShieldCheck, Truck, Banknote, ChevronLeft, AlertCircle, Loader2, User, Smartphone, Tag, Ticket, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -12,11 +12,17 @@ export default function CheckoutPage() {
   const { user } = useAuth(); 
   const { cart, clearCart } = useCartStore() as any; 
   const [paymentMethod, setPaymentMethod] = useState("upi");
-  const [coupon, setCoupon] = useState("");
-  const [isCouponApplied, setIsCouponApplied] = useState(false);
+  
+  // --- COUPON STATES ---
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [isCouponApplied, setIsCouponApplied] = useState(false); // ✅ Corrected Spelling
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  
   const [loading, setLoading] = useState(false); 
   
-  // ✅ 1. Hardcoded API URL (Sabse Safe Option)
+  // ✅ 1. Hardcoded API URL
   const API_URL = "https://www.nandanicollection.com/api";
 
   // Logic: Phone number se prefix (+91) hatane ke liye
@@ -56,9 +62,47 @@ export default function CheckoutPage() {
     return acc + (price || 0) * (item.quantity || 1);
   }, 0);
 
-  const discount = isCouponApplied ? subtotal * 0.1 : 0; 
+  // Dynamic Discount Calculation from Backend Data
+  const discount = appliedCoupon ? Number(appliedCoupon.discount_amount) : 0; 
   const shipping = subtotal > 1499 ? 0 : 99;
   const total = subtotal - discount + shipping;
+
+  // --- APPLY COUPON LOGIC ---
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setCouponLoading(true);
+    setCouponError("");
+
+    try {
+      const response = await fetch(`${API_URL}/coupons/validate-coupon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode, cart_total: subtotal }),
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setAppliedCoupon(result);
+        setIsCouponApplied(true); // ✅ Fixed Typos
+        setCouponError("");
+      } else {
+        setCouponError(result.message);
+        setAppliedCoupon(null);
+        setIsCouponApplied(false);
+      }
+    } catch (err) {
+      setCouponError("Coupon check fail ho gaya.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setIsCouponApplied(false);
+    setCouponCode("");
+    setCouponError("");
+  };
 
   const handlePlaceOrder = async () => {
     if (!form.name || form.phone.length !== 10 || !form.address || !form.pincode) {
@@ -76,7 +120,7 @@ export default function CheckoutPage() {
       payment_method: paymentMethod,
       total_amount: total,
       shipping_charges: shipping,
-      user_id: user?.id || null, 
+      coupon_code: appliedCoupon ? appliedCoupon.coupon_code : null, // ✅ Send to Backend
       items: cart.map((item: any) => ({
           product_id: item.id,
           variant_id: item.variant_id, 
@@ -89,7 +133,6 @@ export default function CheckoutPage() {
     };
 
     try {
-      // ✅ 2. Corrected Link (Hardcoded API_URL use kiya)
       const response = await fetch(`${API_URL}/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -241,17 +284,55 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* --- DYNAMIC COUPON INPUT --- */}
+              <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Ticket size={16} className="text-[#8B3E48]" />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">Have a Coupon?</span>
+                </div>
+                
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Enter Code"
+                      className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-[#8B3E48] uppercase"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                    />
+                    <button 
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponCode}
+                      className="bg-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-black disabled:bg-gray-300 transition-colors"
+                    >
+                      {couponLoading ? "..." : "Apply"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border border-green-100 p-3 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-green-600 p-1 rounded-md text-white"><Tag size={10} /></div>
+                      <span className="text-xs font-black text-green-700 uppercase tracking-tighter">{appliedCoupon.coupon_code}</span>
+                    </div>
+                    <button onClick={removeCoupon} className="text-green-800 hover:text-red-500 transition-colors"><X size={14} /></button>
+                  </div>
+                )}
+                {couponError && <p className="text-[10px] text-red-500 font-bold mt-2 ml-1 italic">{couponError}</p>}
+              </div>
+
               <div className="space-y-4 text-sm border-t border-gray-50 pt-8">
                 <div className="flex justify-between text-gray-500 font-bold uppercase text-[11px] tracking-widest">
                   <span>Subtotal</span>
                   <span>₹{subtotal.toLocaleString()}</span>
                 </div>
-                {isCouponApplied && (
-                  <div className="flex justify-between text-green-600 font-bold uppercase text-[11px] tracking-widest">
-                    <span>Discount (10%)</span>
+                
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-600 font-bold uppercase text-[11px] tracking-widest animate-in fade-in slide-in-from-top-1">
+                    <span>Discount</span>
                     <span>-₹{discount.toLocaleString()}</span>
                   </div>
                 )}
+
                 <div className="flex justify-between text-gray-500 font-bold uppercase text-[11px] tracking-widest">
                   <span>Shipping</span>
                   <span className={shipping === 0 ? "text-green-600 font-black" : ""}>

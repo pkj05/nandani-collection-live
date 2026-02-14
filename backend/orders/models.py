@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import RegexValidator
 from shop.models import SizeVariant
 from django.conf import settings # ✅ User model refer karne ke liye
+from coupons.models import Coupon # ✅ Coupon model import kiya
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -13,7 +14,7 @@ class Order(models.Model):
         ('upi', 'UPI / QR'), ('card', 'Card / Netbanking'), ('cod', 'Cash on Delivery'),
     ]
 
-    # ✅ ADDED: user field to link order with logged-in user
+    # ✅ User linkage
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
@@ -29,9 +30,20 @@ class Order(models.Model):
     address = models.TextField()
     pincode = models.CharField(max_length=6)
     
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    # --- Money Related Fields ---
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2) # Final Payable Amount
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     shipping_charges = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # ✅ Coupon Linkage (Naya Field)
+    # SET_NULL rakha hai taaki agar kabhi admin coupon delete bhi kar de, toh order history kharab na ho
+    applied_coupon = models.ForeignKey(
+        Coupon, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='orders'
+    )
     
     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='upi')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -39,15 +51,17 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    def __str__(self): return f"Order #{self.id} - {self.full_name}"
+    def __str__(self): 
+        return f"Order #{self.id} - {self.full_name}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     size_variant = models.ForeignKey(SizeVariant, on_delete=models.SET_NULL, null=True) 
     product_name = models.CharField(max_length=200)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2) # Price per item
     quantity = models.PositiveIntegerField(default=1)
     size = models.CharField(max_length=20)
     color = models.CharField(max_length=50, blank=True, null=True)
 
-    def __str__(self): return f"{self.quantity} x {self.product_name} ({self.size})"
+    def __str__(self): 
+        return f"{self.quantity} x {self.product_name} ({self.size})"

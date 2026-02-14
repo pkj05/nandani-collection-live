@@ -5,6 +5,7 @@ from shop.api import router as shop_router
 from accounts.api import router as accounts_router
 
 from orders.api import router as orders_router
+from coupons.api import router as coupon_router
 
 api = NinjaAPI(
     title="Nandani Collection API",
@@ -15,5 +16,6 @@ api = NinjaAPI(
 api.add_router("/shop", shop_router, tags=["Shop"])
 api.add_router("/accounts", accounts_router, tags=["Accounts"])
 api.add_router("/orders", orders_router, tags=["Orders"])
+api.add_router("/coupons", coupon_router, tags=["Coupons"])
 
 print("🚀 Nandani API Routers successfully loaded!")

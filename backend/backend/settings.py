@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'accounts',  # ✅ ऑथेंटिकेशन ऐप
     'shop',
     'orders',
+    'coupons',
 ]
 
 MIDDLEWARE = [
