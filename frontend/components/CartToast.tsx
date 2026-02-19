@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useCartStore } from "@/store/useCartStore";
 import { CheckCircle, X } from "lucide-react";
+import Image from "next/image"; // ✅ Performance के लिए Image tag का उपयोग
 
 interface CartToastProps {
   onClose: () => void;
@@ -14,6 +15,12 @@ const CartToast = ({ onClose }: CartToastProps) => {
 
   const lastItem = cart.length > 0 ? cart[cart.length - 1] : null;
 
+  // ✅ HTTPS FIX: Toast में इमेज लोड करते समय एरर न आए
+  const getSafeImageUrl = (url: string) => {
+    if (!url) return "https://placehold.co/100?text=IMG";
+    return url.replace("http://", "https://");
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -24,16 +31,19 @@ const CartToast = ({ onClose }: CartToastProps) => {
   if (!lastItem) return null;
 
   return (
-    // ✅ DESIGN CHANGE: Right Side, Compact (Not Wide), Sleek Dark Glassy Look
+    // ✅ DESIGN PRESERVED: Right Side, Compact, Sleek Dark Glassy Look
     <div className="bg-gray-900/95 backdrop-blur-md text-white shadow-2xl rounded-xl py-3 px-4 w-[300px] flex items-center gap-3 animate-in slide-in-from-right-5 fade-in duration-300 pointer-events-auto border border-white/10">
       
-      {/* Small Image */}
-      <div className="h-10 w-10 bg-white/10 rounded-md overflow-hidden flex-shrink-0 border border-white/10">
-        <img 
-          src={lastItem.image} 
+      {/* Small Image - ✅ Next.js Image Component for better performance */}
+      <div className="h-10 w-10 bg-white/10 rounded-md overflow-hidden flex-shrink-0 border border-white/10 relative">
+        <Image 
+          src={getSafeImageUrl(lastItem.image)} 
           alt={lastItem.name} 
-          className="w-full h-full object-cover"
-          onError={(e) => { e.currentTarget.src = "https://placehold.co/100?text=IMG"; }} 
+          fill
+          sizes="40px"
+          className="object-cover"
+          // ✅ Fallback logic
+          onError={(e: any) => { e.currentTarget.src = "https://placehold.co/100?text=IMG"; }} 
         />
       </div>
 
@@ -48,7 +58,12 @@ const CartToast = ({ onClose }: CartToastProps) => {
 
       {/* Actions */}
       <div className="flex flex-col items-end gap-1">
-        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+        {/* ✅ Accessibility Fix: aria-label added */}
+        <button 
+            onClick={onClose} 
+            aria-label="Close notification"
+            className="text-gray-400 hover:text-white transition-colors"
+        >
             <X size={14} />
         </button>
         <button 

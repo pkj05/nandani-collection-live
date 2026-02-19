@@ -7,6 +7,10 @@ module.exports = {
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
+  // ✅ PERFORMANCE: Future-proofing for faster builds
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     container: {
       center: true,
@@ -60,15 +64,20 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      // ✅ ADDED: New Animations for Magic Wheel and Buttons
+      // ✅ ANIMATIONS: Shimmer and Spin for premium feel
       animation: {
         'shimmer': 'shimmer 2s linear infinite',
         'spin-slow': 'spin 10s linear infinite',
+        'fade-in': 'fade-in 0.5s ease-out',
       },
       keyframes: {
         shimmer: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
     },

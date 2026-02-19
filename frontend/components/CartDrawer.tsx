@@ -3,18 +3,25 @@
 import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import Link from "next/link";
+import Image from "next/image"; // ✅ Next.js Image Component for better performance
 import { useEffect, useState } from "react";
 
 export default function CartDrawer() {
   const { cart, isOpen, toggleCart, removeItem, updateQuantity } = useCartStore() as any;
   
-  // Hydration Fix (Jhatka lagne se rokne ke liye)
+  // Hydration Fix
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
   if (!mounted) return null;
+
+  // ✅ HTTPS FIX: Toast की तरह यहाँ भी इमेज एरर से बचने के लिए
+  const getSafeImageUrl = (url: string) => {
+    if (!url || url === "" || url === "null") return "https://placehold.co/100x150?text=IMG";
+    return url.replace("http://", "https://");
+  };
 
   // Subtotal Calculation
   const subtotal = cart.reduce((acc: number, item: any) => acc + (Number(item.price) * item.quantity), 0);
@@ -30,6 +37,9 @@ export default function CartDrawer() {
 
       {/* 2. DRAWER PANEL (Side se aane wala) */}
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shopping Cart Drawer"
         className={`fixed inset-y-0 right-0 z-[101] w-full max-w-md bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col
         ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
@@ -42,6 +52,7 @@ export default function CartDrawer() {
           </div>
           <button 
             onClick={toggleCart}
+            aria-label="Close Shopping Bag" // ✅ Accessibility fix
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X size={20} />
@@ -63,16 +74,17 @@ export default function CartDrawer() {
             </div>
           ) : (
             cart.map((item: any) => (
-              // KEY FIX: Unique key for variants
               <div key={`${item.variant_id}-${item.size_id}`} className="flex gap-4 group">
                 
-                {/* Image */}
-                <div className="h-28 w-24 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
-                  <img 
-                    src={item.image} 
+                {/* ✅ PERFORMANCE OPTIMIZED IMAGE: Next.js Image with proper sizes */}
+                <div className="h-28 w-24 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100 relative">
+                  <Image 
+                    src={getSafeImageUrl(item.image)} 
                     alt={item.name} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.currentTarget.src = "https://placehold.co/100?text=IMG"; }} 
+                    fill
+                    sizes="100px" // Drawer me images choti hoti hain
+                    className="object-cover"
+                    onError={(e: any) => { e.currentTarget.src = "https://placehold.co/100x150?text=IMG"; }} 
                   />
                 </div>
 
@@ -85,6 +97,7 @@ export default function CartDrawer() {
                       {/* DELETE BUTTON */}
                       <button 
                         onClick={() => removeItem(item.variant_id, item.size_id)}
+                        aria-label={`Remove ${item.name} from bag`} // ✅ Accessibility fix
                         className="text-gray-400 hover:text-red-500 transition-colors p-1"
                       >
                         <Trash2 size={16} />
@@ -101,14 +114,15 @@ export default function CartDrawer() {
                   <div className="flex items-center gap-3 mt-2">
                     <div className="flex items-center border border-gray-200 rounded-lg h-9">
                       
-                      {/* ✅ MINUS (Fixed: Extra safety check) */}
+                      {/* MINUS */}
                       <button 
                         onClick={() => {
                             if (item.quantity > 1) {
                                 updateQuantity(item.variant_id, item.size_id, item.quantity - 1);
                             }
                         }}
-                        className="w-8 h-full flex items-center justify-center hover:bg-gray-50 rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Decrease quantity"
+                        className="w-8 h-full flex items-center justify-center hover:bg-gray-50 rounded-l-lg disabled:opacity-30 disabled:cursor-not-allowed"
                         disabled={item.quantity <= 1}
                       >
                         <Minus size={14} />
@@ -116,9 +130,10 @@ export default function CartDrawer() {
                       
                       <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
                       
-                      {/* PLUS (Zyada karo - Stock Check) */}
+                      {/* PLUS */}
                       <button 
                         onClick={() => updateQuantity(item.variant_id, item.size_id, item.quantity + 1)}
+                        aria-label="Increase quantity"
                         className={`w-8 h-full flex items-center justify-center rounded-r-lg transition-colors
                           ${item.quantity >= item.stock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'hover:bg-gray-50 text-black'}`}
                         disabled={item.quantity >= item.stock}
@@ -127,9 +142,8 @@ export default function CartDrawer() {
                       </button>
                     </div>
 
-                    {/* Stock Alert Label */}
                     {item.quantity >= item.stock && (
-                      <span className="text-[10px] text-red-500 font-bold uppercase animate-pulse">Max Limit</span>
+                      <span className="text-[10px] text-red-500 font-bold uppercase animate-pulse">Max Stock</span>
                     )}
                   </div>
                 </div>

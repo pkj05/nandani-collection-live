@@ -41,6 +41,7 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ✅ IMPROVED IMAGE FIXER: HTTPS fix to prevent 400 errors
   const getImageUrl = (item: any) => {
     let path = item.thumbnail;
     if (!path && item.variants && item.variants.length > 0) {
@@ -49,10 +50,15 @@ const Header = () => {
         path = firstVariant.images[0].image; 
       }
     }
-    if (!path) return "https://placehold.co/100x100?text=No+Image";
-    if (path.startsWith("http")) return path;
-    const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const baseUrl = API_URL?.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+    if (!path || path === "null") return "https://placehold.co/100x150?text=No+Image";
+    
+    let finalPath = path.replace("http://", "https://");
+    if (finalPath.startsWith("http")) return finalPath;
+    
+    const cleanPath = finalPath.startsWith("/") ? finalPath : `/${finalPath}`;
+    let baseUrl = API_URL?.replace("http://", "https://");
+    baseUrl = baseUrl?.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    
     return `${baseUrl}${cleanPath}`;
   };
 
@@ -123,7 +129,12 @@ const Header = () => {
 
       <div className="max-w-7xl mx-auto px-4 h-14 flex justify-between items-center bg-white">
         <div className="flex items-center gap-4">
-          <button className={`md:hidden ${iconBtnClass}`} onClick={() => setIsMenuOpen(true)}>
+          {/* ✅ Accessibility Fix: aria-label added */}
+          <button 
+            className={`md:hidden ${iconBtnClass}`} 
+            onClick={() => setIsMenuOpen(true)}
+            aria-label="Open Mobile Menu"
+          >
             <Menu size={18} />
           </button>
           <div className="hidden md:flex gap-6 text-[11px] font-black text-gray-500 uppercase tracking-tighter">
@@ -138,7 +149,12 @@ const Header = () => {
         <Link href="/" className="text-2xl font-serif font-bold text-gray-900 tracking-tight">Nandani</Link>
 
         <div className="flex items-center gap-2 md:gap-3">
-          <button className={iconBtnClass} onClick={() => setIsSearchOpen(true)}>
+          {/* ✅ Accessibility Fix: aria-label added */}
+          <button 
+            className={iconBtnClass} 
+            onClick={() => setIsSearchOpen(true)}
+            aria-label="Open Search"
+          >
             <Search size={18} />
           </button>
 
@@ -147,11 +163,12 @@ const Header = () => {
               <button 
                 className={`${iconBtnClass} ${isUserMenuOpen ? 'border-primary' : ''}`} 
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                aria-label="User Account Menu"
               >
                 <User size={18} className={isUserMenuOpen ? "text-primary" : "text-gray-700"} />
               </button>
             ) : (
-              <Link href="/login" className={iconBtnClass}>
+              <Link href="/login" className={iconBtnClass} aria-label="Login to your account">
                 <User size={18} />
               </Link>
             )}
@@ -163,7 +180,6 @@ const Header = () => {
                   <p className="text-sm font-bold text-gray-900 truncate">{user.full_name || "Guest User"}</p>
                 </div>
                 
-                {/* ✅ ADDED: Profile Link */}
                 <Link href="/profile" className="flex items-center justify-between px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
                   My Profile <UserCircle size={14} className="text-gray-300" />
                 </Link>
@@ -182,7 +198,11 @@ const Header = () => {
             )}
           </div>
 
-          <button onClick={toggleCart} className={`${iconBtnClass} relative`}>
+          <button 
+            onClick={toggleCart} 
+            className={`${iconBtnClass} relative`}
+            aria-label={`View shopping bag with ${cartCount} items`}
+          >
             <ShoppingBag size={18} />
             {cartCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-[#8B3E48] text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
@@ -199,8 +219,14 @@ const Header = () => {
           <div className="flex items-center gap-3 mb-6">
             <form onSubmit={handleSearch} className="flex-1 bg-gray-100 p-3 rounded-xl flex items-center">
               <Search className="text-gray-400 mr-2" size={18} />
-              <input autoFocus type="text" placeholder="Search premium ethnic wear..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-transparent outline-none text-gray-900 font-medium" />
+              <input 
+                autoFocus 
+                type="text" 
+                placeholder="Search premium ethnic wear..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-transparent outline-none text-gray-900 font-medium" 
+              />
             </form>
             <button onClick={closeEverything} className="p-2 text-[#8B3E48] font-black uppercase text-[10px] tracking-widest">Close</button>
           </div>
@@ -210,7 +236,14 @@ const Header = () => {
               {suggestions.map((item) => (
                 <Link key={item.id} href={`/product/${item.id}`} onClick={closeEverything} className="flex items-center gap-4 border-b border-gray-50 pb-4">
                   <div className="relative w-14 h-20 flex-shrink-0">
-                    <Image src={getImageUrl(item)} alt={item.name} fill sizes="60px" className="object-cover rounded-xl shadow-sm" />
+                    <Image 
+                      src={getImageUrl(item)} 
+                      alt={item.name} 
+                      fill 
+                      sizes="60px" 
+                      quality={60} // ✅ Quality optimized for small suggestions
+                      className="object-cover rounded-xl shadow-sm" 
+                    />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</p>
@@ -235,19 +268,18 @@ const Header = () => {
         <div className="p-8 h-full flex flex-col">
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-2xl font-serif font-bold text-gray-900">Nandani</h2>
-            <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-gray-50 rounded-full text-gray-900">
+            <button onClick={() => setIsMenuOpen(false)} aria-label="Close Sidebar" className="p-2 bg-gray-50 rounded-full text-gray-900">
               <X size={20} />
             </button>
           </div>
           
-          <nav className="flex flex-col space-y-1">
+          <nav className="flex flex-col space-y-1 overflow-y-auto">
             {user && (
               <div className="bg-[#8B3E48]/5 p-5 rounded-[2rem] mb-6 border border-[#8B3E48]/10">
                 <p className="text-[9px] text-[#8B3E48] uppercase font-black tracking-widest mb-1">Membership Active</p>
                 <p className="text-lg font-bold text-gray-900 truncate">{user.full_name}</p>
-                {/* ✅ MOBILE PROFILE LINK */}
                 <Link href="/profile" className="text-xs text-[#8B3E48] font-black underline mt-2 block uppercase tracking-widest" onClick={() => setIsMenuOpen(false)}>
-                   Edit Profile
+                    Edit Profile
                 </Link>
               </div>
             )}
@@ -256,7 +288,6 @@ const Header = () => {
               Home <ChevronRight size={16} className="text-gray-300" />
             </Link>
 
-            {/* ✅ MOBILE MY ORDERS LINK */}
             <Link href="/orders" className="text-xl font-bold text-gray-900 py-4 border-b border-gray-50 flex items-center justify-between" onClick={() => setIsMenuOpen(false)}>
               My Orders <ChevronRight size={16} className="text-gray-300" />
             </Link>
@@ -272,7 +303,7 @@ const Header = () => {
               </Link>
             ))}
             
-            <div className="pt-10 mt-auto">
+            <div className="pt-10 mt-auto pb-8">
               {user ? (
                  <button 
                  onClick={() => { logout(); closeEverything(); }}

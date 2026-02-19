@@ -1,18 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // ✅ 1. "Failed to find Server Action" Error Fix
-  // Har baar naya Build ID banayega taki browser purana cache use na kare
+  // ✅ 1. "Failed to find Server Action" Fix
   generateBuildId: async () => {
     return 'build-' + Date.now();
   },
 
-  // ✅ 2. Images Settings (Django & External Links Support)
+  // ✅ 2. Images Settings (HTTPS Enforcement & Remote Patterns)
   images: {
+    // Lighthouse Performance: Next.js image optimization ko optimize karne ke liye
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ['image/webp'], // Performance fix: Hamesha WebP me deliver karega
+    
     remotePatterns: [
       {
+        // Local Backend (Development)
         protocol: "http",
-        hostname: "192.168.1.9",
+        hostname: "127.0.0.1",
         port: "8000",
       },
       {
@@ -21,31 +26,54 @@ const nextConfig: NextConfig = {
         port: "8000",
       },
       {
+        // ✅ Live Site: Mixed Content error se bachne ke liye
         protocol: "https",
-        hostname: "**", 
+        hostname: "www.nandanicollection.com",
       },
       {
-        protocol: "http",
-        hostname: "**", 
+        protocol: "https",
+        hostname: "nandanicollection.com",
       },
+      {
+        // ✅ Placeholder Service: Search page loading fix karne ke liye
+        protocol: "https",
+        hostname: "placehold.co",
+      },
+      {
+        // ✅ All External HTTPS Images (Unsplash etc.)
+        protocol: "https",
+        hostname: "**", 
+      }
     ],
-    // Images ko optimize nahi karega (Fast loading fix for some servers)
-    unoptimized: true, 
+    // Lighthouse Performance Fix: Cache timing 1 ghanta
+    minimumCacheTTL: 3600, 
   },
   
   // ✅ 3. Server Actions Settings
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000", "192.168.1.9:3000", "www.nandanicollection.com"],
+      allowedOrigins: [
+        "localhost:3000", 
+        "127.0.0.1:3000", 
+        "www.nandanicollection.com",
+        "nandanicollection.com"
+      ],
     },
   },
   
-  // ✅ 4. Build ke time TypeScript Errors ko ignore karega
+  // ✅ 4. Build Safety (TypeScript errors build nahi rokengi)
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // ✅ 5. Production Optimization
+  reactStrictMode: true,
   
-  // ❌ Note: 'eslint' key yahan se hata diya hai kyunki Next.js 16 me ye allowed nahi hai.
+  // 🚀 Site speed badhane ke liye Gzip compression
+  compress: true,
+
+  // Performance Fix: X-Powered-By header remove karke security badhata hai
+  poweredByHeader: false,
 };
 
 export default nextConfig;
