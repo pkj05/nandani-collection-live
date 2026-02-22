@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense, useRef, useCallback } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, ShoppingBag, Truck, ArrowRight, Star, ReceiptText, Copy, CheckCircle2, MessageCircle, Gift, Loader2, Sparkles } from "lucide-react";
+import { Check, ShoppingBag, Truck, ArrowRight, Star, ReceiptText, Copy, CheckCircle2, MessageCircle, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface WheelItem {
@@ -26,7 +26,13 @@ function SuccessContent() {
   const [hasSpun, setHasSpun] = useState(false);
   const wheelRef = useRef<HTMLDivElement>(null);
 
-  const formattedOrderId = rawOrderId ? `NDN-2026-${rawOrderId.padStart(4, '0')}` : "NDN-2026-WAIT";
+  // ✅ ONLINE PAYMENT LOGIC: Checking if it's a PhonePe Transaction (Starts with 'T') or COD
+  const isOnlinePayment = rawOrderId?.startsWith("T");
+  const formattedOrderId = rawOrderId 
+    ? isOnlinePayment 
+      ? `TXN-${rawOrderId}` 
+      : `NDN-2026-${rawOrderId.toString().padStart(4, '0')}` 
+    : "NDN-2026-WAIT";
 
   // --- CHECK IF ALREADY SPUN ON LOAD ---
   useEffect(() => {
@@ -130,6 +136,15 @@ function SuccessContent() {
           </div>
           <h1 className="text-4xl font-serif font-bold text-gray-900 tracking-tight">Shubhkaamnaayein!</h1>
           <p className="text-gray-500 font-medium">Aapka order place ho gaya hai.</p>
+          
+          {/* ✅ New Online Payment Verification Badge */}
+          {isOnlinePayment && (
+            <div className="flex justify-center mt-3">
+              <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <ShieldCheck size={14} /> Payment Verified Successfully
+              </div>
+            </div>
+          )}
         </div>
 
         {/* --- 🎡 3D MAGIC WHEEL SECTION --- */}
@@ -238,7 +253,7 @@ function SuccessContent() {
         <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm space-y-6">
           <div className="flex justify-between items-center border-b border-gray-200/50 pb-5">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-left flex items-center gap-2">
-              <ReceiptText size={14} /> Order ID
+              <ReceiptText size={14} /> {isOnlinePayment ? "Transaction ID" : "Order ID"}
             </span>
             <button onClick={() => handleCopy(formattedOrderId, 'order')} className="font-mono text-sm font-bold text-gray-900 flex items-center gap-2">
               {formattedOrderId} {copied ? <CheckCircle2 size={14} className="text-green-500" /> : <Copy size={14} className="opacity-20" />}

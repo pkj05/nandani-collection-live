@@ -16,13 +16,13 @@ export default function CheckoutPage() {
   // --- COUPON STATES ---
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
-  const [isCouponApplied, setIsCouponApplied] = useState(false); // ✅ Corrected Spelling
+  const [isCouponApplied, setIsCouponApplied] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
   
   const [loading, setLoading] = useState(false); 
   
-  // ✅ 1. Hardcoded API URL
+  // ✅ 1. Hardcoded API URL (Django Backend)
   const API_URL = "https://www.nandanicollection.com/api";
 
   // Logic: Phone number se prefix (+91) hatane ke liye
@@ -83,7 +83,7 @@ export default function CheckoutPage() {
 
       if (result.success) {
         setAppliedCoupon(result);
-        setIsCouponApplied(true); // ✅ Fixed Typos
+        setIsCouponApplied(true);
         setCouponError("");
       } else {
         setCouponError(result.message);
@@ -104,6 +104,7 @@ export default function CheckoutPage() {
     setCouponError("");
   };
 
+  // --- ORDER & PAYMENT LOGIC ---
   const handlePlaceOrder = async () => {
     if (!form.name || form.phone.length !== 10 || !form.address || !form.pincode) {
       setError("Please fill all details correctly. Phone must be exactly 10 digits.");
@@ -120,7 +121,7 @@ export default function CheckoutPage() {
       payment_method: paymentMethod,
       total_amount: total,
       shipping_charges: shipping,
-      coupon_code: appliedCoupon ? appliedCoupon.coupon_code : null, // ✅ Send to Backend
+      coupon_code: appliedCoupon ? appliedCoupon.coupon_code : null,
       items: cart.map((item: any) => ({
           product_id: item.id,
           variant_id: item.variant_id, 
@@ -133,6 +134,7 @@ export default function CheckoutPage() {
     };
 
     try {
+      // Step 1: Django Backend me Order Create karna
       const response = await fetch(`${API_URL}/orders/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -142,14 +144,44 @@ export default function CheckoutPage() {
       const result = await response.json();
 
       if (result.success) {
-        clearCart(); 
-        router.push(`/checkout/success?id=${result.order_id}`);
+        // Step 2: Check Payment Method
+        if (paymentMethod === "upi") {
+          // --- PHONEPE PAYMENT INTEGRATION ---
+          try {
+            const payRes = await fetch("/payment/pay", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                amount: total, 
+                transactionId: `NDN-${result.order_id}`, // Apne order ID ko PhonePe transaction ID bana diya
+                name: form.name,
+                mobile: form.phone
+              })
+            });
+            const payData = await payRes.json();
+            
+            if (payData.success && payData.url) {
+              clearCart(); // Payment page par bhejne se pehle cart clear kar do
+              window.location.href = payData.url; // Redirecting to PhonePe
+            } else {
+              setError(payData.error || "Payment Gateway link generate nahi hua.");
+              setLoading(false);
+            }
+          } catch (payErr) {
+            setError("Payment initiate karne me error aayi. Please try again.");
+            setLoading(false);
+          }
+        } else {
+          // --- COD LOGIC (Old Flow) ---
+          clearCart(); 
+          router.push(`/checkout/success?id=${result.order_id}`);
+        }
       } else {
-        setError(result.message || "Something went wrong.");
+        setError(result.message || "Something went wrong while creating order.");
+        setLoading(false);
       }
     } catch (err) {
       setError("Server connection failed. Is your Django backend running?");
-    } finally {
       setLoading(false);
     }
   };
@@ -246,7 +278,7 @@ export default function CheckoutPage() {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { id: "upi", title: "UPI Transfer", icon: <Smartphone />, desc: "GPay, PhonePe, Paytm" },
+                  { id: "upi", title: "Online Payment", icon: <Smartphone />, desc: "UPI, Cards, Wallets" },
                   { id: "cod", title: "Cash on Delivery", icon: <Banknote />, desc: "Pay at Doorstep" }
                 ].map((item) => (
                   <button 
@@ -350,7 +382,7 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black mt-10 hover:bg-black transition-all active:scale-[0.97] flex items-center justify-center gap-3 shadow-2xl shadow-gray-300 disabled:bg-gray-300 uppercase tracking-widest text-sm"
               >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : `Confirm & Pay`}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : (paymentMethod === 'upi' ? `Pay ₹${total.toLocaleString()} Now` : `Place COD Order`)}
               </button>
               
               <div className="flex items-center justify-center gap-2 mt-6">

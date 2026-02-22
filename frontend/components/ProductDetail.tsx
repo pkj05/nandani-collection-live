@@ -52,9 +52,10 @@ export default function ProductDetail({ product }: { product: Product }) {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(true);
 
-  // --- LIGHTBOX STATE ---
+  // --- LIGHTBOX & DESCRIPTION STATE ---
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isDescExpanded, setIsDescExpanded] = useState(false); // ✅ Added state for Description Expand/Collapse
 
   // ✅ IMPROVED IMAGE FIXER: Force HTTPS to fix 400 Bad Request
   const getFullImageUrl = (path: string) => {
@@ -312,10 +313,29 @@ export default function ProductDetail({ product }: { product: Product }) {
 
           <ActionButtons className="mt-2" />
           
+          {/* ✅ PREMIUM DESCRIPTION BOX ADDED HERE */}
           <div className="space-y-4 pt-6 border-t border-gray-100 mt-4">
             <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest">Product Description</h3>
-            <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+            
+            <div className="relative border border-[#8B3E48]/20 bg-[#FCFBFA] p-5 rounded-2xl shadow-sm transition-all duration-300">
+                <div className={`text-gray-600 text-sm leading-relaxed whitespace-pre-line relative ${!isDescExpanded ? "line-clamp-4" : ""}`}>
+                    {product.description}
+                    
+                    {/* Gradient Fade Effect when collapsed */}
+                    {!isDescExpanded && (
+                        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#FCFBFA] to-transparent pointer-events-none"></div>
+                    )}
+                </div>
+                
+                <button 
+                    onClick={() => setIsDescExpanded(!isDescExpanded)}
+                    className="mt-3 text-xs font-bold text-[#8B3E48] uppercase tracking-widest flex items-center gap-1 hover:text-black transition-colors"
+                >
+                    {isDescExpanded ? "- Show Less" : "+ Read More"}
+                </button>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pt-2">
                 <div className="bg-gray-50 px-4 py-3 rounded-2xl flex items-center gap-3 border border-gray-100 shrink-0">
                     <Truck size={20} className="text-[#8B3E48]" />
                     <div className="text-xs font-black text-gray-700 uppercase italic">Free Express Shipping</div>
@@ -326,6 +346,8 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </div>
             </div>
           </div>
+          {/* ✅ PREMIUM DESCRIPTION BOX END */}
+
         </div>
       </div>
 
