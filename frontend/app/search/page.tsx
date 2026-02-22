@@ -21,37 +21,16 @@ function SearchContent() {
 
   // ✅ ENHANCED IMAGE FIXER: Deep search logic with detailed logging
   const getImageUrl = (item: any) => {
-    // 1. Sabhi possible backend keys ko check karein
-    let rawPath = item.thumbnail || item.image || item.product_image || item.img_url;
-    
-    // 2. Agar thumbnail nahi hai, to variants me deep search karein
-    if (!rawPath && item.variants?.length > 0) {
-      const firstVar = item.variants[0];
-      // Variants ke andar image object ya string dono handle karein
-      const imgData = firstVar.images?.[0] || firstVar.image;
-      rawPath = typeof imgData === 'object' ? imgData.image : imgData;
-    }
-    
-    // 3. Garbage values ya undefined handle karein
-    if (!rawPath || rawPath === "null" || rawPath === "undefined" || rawPath.toString().length < 2) {
-      console.warn(`[Image Warning] Missing path for: ${item.name}`, { item });
-      // .png extension fix for placehold.co (Next.js 400 error fix)
-      return "https://placehold.co/600x800.png?text=Nandani+Collection";
-    }
-    
-    let finalUrl = "";
-    let finalPath = rawPath.toString().replace("http://", "https://");
-    
-    if (finalPath.startsWith("http")) {
-      finalUrl = finalPath;
-    } else {
-      const cleanPath = finalPath.startsWith("/") ? finalPath : `/${finalPath}`;
-      let baseUrl = API_URL?.replace("http://", "https://");
-      baseUrl = baseUrl?.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-      finalUrl = `${baseUrl}${cleanPath}`;
+    // 1. JSON के हिसाब से सटीक जगह से इमेज उठाना
+    const imgPath = item?.variants?.[0]?.thumbnail;
+
+    // 2. अगर इमेज नहीं है तो Placeholder दिखाना
+    if (!imgPath) {
+      return "https://placehold.co/600x800.png?text=No+Image";
     }
 
-    return finalUrl;
+    // 3. HTTP को HTTPS में बदलना (ताकि ब्राउज़र इसे ब्लॉक न करे)
+    return imgPath.replace("http://", "https://");
   };
 
   const getPrice = (product: any) => {
@@ -161,8 +140,11 @@ function SearchContent() {
                           sizes="(max-width: 768px) 50vw, 33vw"
                           className={`object-cover transition-transform duration-1000 group-hover:scale-110 ${product.stock <= 0 ? 'grayscale opacity-70' : ''}`} 
                           priority={index < 4}
-                          onError={() => {
+                          // ✅ FIX: Ensures the app doesn't break if a broken URL is fed to Image
+                          onError={(e: any) => {
                             console.error(`[Image Error] Failed to load: ${imageUrl}`);
+                            e.currentTarget.src = "https://placehold.co/600x800.png?text=No+Image";
+                            e.currentTarget.srcset = "";
                           }}
                         />
                       </Link>

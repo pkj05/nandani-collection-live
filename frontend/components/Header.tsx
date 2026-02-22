@@ -41,25 +41,18 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ✅ IMPROVED IMAGE FIXER: HTTPS fix to prevent 400 errors
+  // ✅ IMPROVED IMAGE FIXER: HTTPS and .png fix to prevent SVG Error
   const getImageUrl = (item: any) => {
-    let path = item.thumbnail;
-    if (!path && item.variants && item.variants.length > 0) {
-      const firstVariant = item.variants[0];
-      if (firstVariant.images && firstVariant.images.length > 0) {
-        path = firstVariant.images[0].image; 
-      }
+    // 1. JSON के हिसाब से सटीक जगह से इमेज उठाना
+    const imgPath = item?.variants?.[0]?.thumbnail;
+
+    // 2. अगर इमेज नहीं है तो Placeholder दिखाना
+    if (!imgPath) {
+      return "https://placehold.co/600x800.png?text=No+Image";
     }
-    if (!path || path === "null") return "https://placehold.co/100x150?text=No+Image";
-    
-    let finalPath = path.replace("http://", "https://");
-    if (finalPath.startsWith("http")) return finalPath;
-    
-    const cleanPath = finalPath.startsWith("/") ? finalPath : `/${finalPath}`;
-    let baseUrl = API_URL?.replace("http://", "https://");
-    baseUrl = baseUrl?.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    
-    return `${baseUrl}${cleanPath}`;
+
+    // 3. HTTP को HTTPS में बदलना (ताकि ब्राउज़र इसे ब्लॉक न करे)
+    return imgPath.replace("http://", "https://");
   };
 
   const getPrice = (item: any) => {
@@ -129,7 +122,6 @@ const Header = () => {
 
       <div className="max-w-7xl mx-auto px-4 h-14 flex justify-between items-center bg-white">
         <div className="flex items-center gap-4">
-          {/* ✅ Accessibility Fix: aria-label added */}
           <button 
             className={`md:hidden ${iconBtnClass}`} 
             onClick={() => setIsMenuOpen(true)}
@@ -149,7 +141,6 @@ const Header = () => {
         <Link href="/" className="text-2xl font-serif font-bold text-gray-900 tracking-tight">Nandani</Link>
 
         <div className="flex items-center gap-2 md:gap-3">
-          {/* ✅ Accessibility Fix: aria-label added */}
           <button 
             className={iconBtnClass} 
             onClick={() => setIsSearchOpen(true)}
@@ -241,8 +232,13 @@ const Header = () => {
                       alt={item.name} 
                       fill 
                       sizes="60px" 
-                      quality={60} // ✅ Quality optimized for small suggestions
+                      quality={60}
                       className="object-cover rounded-xl shadow-sm" 
+                      // ✅ FIX: Image Backup if backend link breaks
+                      onError={(e: any) => {
+                        e.currentTarget.src = "https://placehold.co/100x150.png?text=No+Image";
+                        e.currentTarget.srcset = "";
+                      }}
                     />
                   </div>
                   <div>
