@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import ProductDetail from "@/components/ProductDetail"; 
 // ✅ lib/api से प्रोफेशनल फंक्शन इम्पोर्ट किया
 import { getProductDetail } from "@/lib/api";
+import ProductReviews from "@/components/ProductReviews";
 
 export default function ProductPage() {
   const params = useParams(); 
@@ -57,5 +58,11 @@ export default function ProductPage() {
   }
 
   // --- RENDER MAIN UI ---
-  return <ProductDetail product={product} />;
+  // ✅ FIX: ProductDetail और ProductReviews दोनों को एक साथ दिखाने के लिए React Fragment (<></>) लगाया है
+  return (
+    <>
+      <ProductDetail product={product} />
+      <ProductReviews productId={product.id} />
+    </>
+  );
 }

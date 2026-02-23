@@ -1,33 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image"; // ✅ Next.js Image Component for high performance
-import { ShoppingCart, Heart } from "lucide-react"; 
+import Image from "next/image"; 
+import { ShoppingCart, Heart, Star } from "lucide-react"; 
 import { useCartStore } from "@/store/useCartStore"; 
 import CartToast from "@/components/CartToast"; 
 
 export default function ProductCard({ product }: { product: any }) {
   const { addItem } = useCartStore() as any; 
   const [showToast, setShowToast] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]); 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // ✅ IMPROVED IMAGE FIXER: Null handling aur HTTPS enforcement to fix 400 error
   const getFullImageUrl = (path: string) => {
     if (!path || path === "" || path === "null") {
       return "https://placehold.co/600x800/f3f4f6/9ca3af?text=No+Image";
     }
-    
-    // ✅ लिंक में http को जबरदस्ती https में बदलें (Mixed Content fix)
     let finalPath = path.replace("http://", "https://");
-    
     if (finalPath.startsWith("http")) return finalPath;
-
     const cleanPath = finalPath.startsWith("/") ? finalPath : `/${finalPath}`;
-    
-    // ✅ API_URL को भी https में बदलें
     let baseUrl = API_URL?.replace("http://", "https://");
     baseUrl = baseUrl?.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    
     return `${baseUrl}${cleanPath}`;
   };
 
@@ -51,7 +44,25 @@ export default function ProductCard({ product }: { product: any }) {
     } else {
         setDisplayImage(getFullImageUrl(product.thumbnail));
     }
+
+    const fetchReviews = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/reviews/${product.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setReviews(data);
+        }
+      } catch (err) {
+        console.error("Error fetching card reviews:", err);
+      }
+    };
+    fetchReviews();
   }, [product]);
+
+  // Rating Calculation
+  const averageRating = reviews.length > 0 
+    ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1)
+    : null;
 
   const totalStock = product.variants?.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) || 0;
 
@@ -86,29 +97,23 @@ export default function ProductCard({ product }: { product: any }) {
     <>
       <div className="group relative bg-white rounded-[1.5rem] p-2 shadow-sm hover:shadow-xl transition-all duration-500 border border-transparent hover:border-gray-100 flex flex-col h-full">
         
-        {/* IMAGE SECTION - ✅ Performance Optimized */}
+        {/* IMAGE SECTION */}
         <div className="relative aspect-[3/4] overflow-hidden rounded-[1.2rem] bg-gray-50 block will-change-transform">
-          <Link href={`/product/${product.id}`} className="block h-full w-full" aria-label={`View details for ${product.name}`}>
+          <Link href={`/product/${product.id}`} className="block h-full w-full">
             <Image 
               src={displayImage} 
               alt={product.name}
               fill
-              quality={75} // ✅ Quality optimized for Mobile performance
-              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 20vw" // ✅ Precision sizing for Lighthouse
-              priority={false}
+              quality={75}
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 20vw"
               className="object-cover transition-transform duration-700 group-hover:scale-105"
-              onError={() => {
-                setDisplayImage("https://placehold.co/600x800/f3f4f6/9ca3af?text=Image+Not+Found");
-              }}
+              onError={() => setDisplayImage("https://placehold.co/600x800/f3f4f6/9ca3af?text=Image+Not+Found")}
             />
           </Link>
           {totalStock === 0 ? (
             <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white text-[10px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider shadow-sm z-10">SOLD OUT</div>
           ) : (
-            <button 
-              aria-label="Add to Wishlist" // ✅ Accessibility fix
-              className="absolute top-3 right-3 h-8 w-8 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110 text-gray-900 shadow-sm z-10"
-            >
+            <button className="absolute top-3 right-3 h-8 w-8 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110 text-gray-900 shadow-sm z-10">
               <Heart size={16} />
             </button>
           )}
@@ -118,7 +123,18 @@ export default function ProductCard({ product }: { product: any }) {
         <div className="mt-2 flex flex-col flex-grow space-y-0.5 px-1">
           <div>
             <h3 className="text-gray-900 font-serif text-[15px] font-bold truncate group-hover:text-black transition-colors leading-tight">{product.name}</h3>
-            <p className="text-gray-500 text-[10px] uppercase tracking-widest font-medium mt-0.5">{product.category_name || product.category}</p>
+            
+            {/* ✅ SMART RATING BADGE: Only shows if reviews exist */}
+            {reviews.length > 0 && (
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center bg-green-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+                   {averageRating} <Star size={8} fill="white" className="ml-0.5" />
+                </div>
+                <span className="text-[10px] text-gray-400 font-medium">({reviews.length})</span>
+              </div>
+            )}
+
+            <p className="text-gray-500 text-[10px] uppercase tracking-widest font-medium mt-1">{product.category_name || product.category}</p>
           </div>
 
           <div className="flex items-center justify-between mt-1">
@@ -128,7 +144,6 @@ export default function ProductCard({ product }: { product: any }) {
             <button 
               onClick={handleQuickAdd} 
               disabled={totalStock === 0} 
-              aria-label={`Add ${product.name} to cart`} // ✅ Accessibility fix
               className={`h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm relative overflow-hidden ${totalStock === 0 ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-900 hover:shadow-md hover:scale-105'}`}
             >
               <ShoppingCart size={16} strokeWidth={2.5} />
@@ -145,17 +160,7 @@ export default function ProductCard({ product }: { product: any }) {
                   onMouseEnter={() => setDisplayImage(getFullImageUrl(v.thumbnail))} 
                   className={`w-6 h-6 rounded-full border-[1.5px] cursor-pointer relative overflow-hidden transition-all duration-300 ${displayImage === getFullImageUrl(v.thumbnail) ? 'border-black scale-110 shadow-sm' : 'border-transparent opacity-80'}`}
                 >
-                  <Image 
-                    src={getFullImageUrl(v.thumbnail)} 
-                    alt={v.color_name}
-                    width={24}
-                    height={24}
-                    quality={50} // ✅ Very low quality for tiny circles to save data
-                    className="object-cover h-full w-full"
-                    onError={(e: any) => {
-                      e.currentTarget.src = "https://placehold.co/100x100?text=x";
-                    }}
-                  />
+                  <Image src={getFullImageUrl(v.thumbnail)} alt={v.color_name} width={24} height={24} quality={50} className="object-cover h-full w-full" />
                 </div>
               ))}
             </div>

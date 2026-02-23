@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useCartStore } from "@/store/useCartStore";
-import { Heart, MessageCircle, Truck, RotateCcw, Loader2, X, Maximize2 } from "lucide-react";
+import { Heart, MessageCircle, Truck, RotateCcw, Loader2, X, Maximize2, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image"; 
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ✅ ProductReviews Component and Badge Import
+import ProductReviews, { ReviewBadge } from "@/components/ProductReviews";
 
 // ✅ SWIPER IMPORTS
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -17,9 +20,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/zoom'; 
 
-// Import Custom Toast
 import CartToast from "@/components/CartToast"; 
-// ✅ lib/api se relevant function import kiya
 import { getProducts } from "@/lib/api";
 
 interface Product {
@@ -46,32 +47,29 @@ export default function ProductDetail({ product }: { product: Product }) {
   const router = useRouter();
   const { addItem, cart } = useCartStore() as any;
   const swiperRef = useRef<any>(null);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://nandanicollection.com";
   
   const [showToast, setShowToast] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(true);
 
+  // --- REVIEW STATES ---
+  const [reviews, setReviews] = useState<any[]>([]);
+
   // --- LIGHTBOX & DESCRIPTION STATE ---
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [isDescExpanded, setIsDescExpanded] = useState(false); // ✅ Added state for Description Expand/Collapse
+  const [isDescExpanded, setIsDescExpanded] = useState(false); 
 
-  // ✅ IMPROVED IMAGE FIXER: Force HTTPS to fix 400 Bad Request
   const getFullImageUrl = (path: string) => {
     if (!path || path === "" || path === "null") {
       return "https://placehold.co/600x800/f3f4f6/9ca3af?text=No+Image";
     }
-    
-    // Forced HTTPS replacement
     let finalPath = path.replace("http://", "https://");
-    
     if (finalPath.startsWith("http")) return finalPath;
-
     const cleanPath = finalPath.startsWith("/") ? finalPath : `/${finalPath}`;
     let baseUrl = API_URL?.replace("http://", "https://");
     baseUrl = baseUrl?.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    
     return `${baseUrl}${cleanPath}`;
   };
 
@@ -94,20 +92,26 @@ export default function ProductDetail({ product }: { product: Product }) {
     const initial = getInitialVariant();
     if (initial) setSelectedVariant(initial);
     
-    const fetchRelated = async () => {
+    const fetchPageData = async () => {
       try {
         setLoadingRelated(true);
         const category = product.category_name || "";
         const data = await getProducts(category);
         setRelatedProducts(data.filter((p: any) => p.id !== product.id).slice(0, 4));
+
+        const res = await fetch(`${API_URL}/api/reviews/${product.id}`);
+        if (res.ok) {
+          const reviewData = await res.json();
+          setReviews(reviewData);
+        }
       } catch (error) {
-        console.error("Error fetching related products:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoadingRelated(false);
       }
     };
 
-    fetchRelated();
+    fetchPageData();
   }, [product]);
 
   const defaultSize = selectedVariant?.sizes?.[0] || null;
@@ -135,12 +139,18 @@ export default function ProductDetail({ product }: { product: Product }) {
     setSelectedSize(s);
   };
 
+  const scrollToReviews = () => {
+    const section = document.getElementById("reviews-display-section");
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const handleAddToCart = (isBuyNow = false) => {
     if (qtyInCart >= currentStock) {
         alert("Maximum stock limit reached!");
         return;
     }
-
     const payload = {
       id: product.id,
       variant_id: selectedVariant?.id,
@@ -153,30 +163,23 @@ export default function ProductDetail({ product }: { product: Product }) {
       quantity: 1, 
       stock: currentStock
     };
-
     const success = addItem(payload);
-
     if (success) {
-        if (isBuyNow) {
-            router.push("/checkout");
-        } else {
+        if (isBuyNow) router.push("/checkout");
+        else {
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
         }
     }
   };
 
-  const getSliderImages = () => {
+  const sliderImages = (() => {
     const extraImages = (selectedVariant?.images || []).map((img: any) => img.image || img);
     const mainImage = selectedVariant?.thumbnail || product.thumbnail;
     const allImages = [mainImage, ...extraImages].filter((img: any) => img && img !== "");
-    
     if (allImages.length === 0) return ["https://placehold.co/600x800/f3f4f6/9ca3af?text=No+Image+Available"];
-    
     return allImages.map(img => getFullImageUrl(img));
-  };
-
-  const sliderImages = getSliderImages();
+  })();
 
   const openLightbox = (index: number) => {
     setActiveImageIndex(index);
@@ -206,7 +209,7 @@ export default function ProductDetail({ product }: { product: Product }) {
     <div className="bg-white pb-10 font-sans min-h-screen relative">
       <div className="px-4 pt-2 lg:flex lg:gap-10 lg:items-start lg:max-w-6xl lg:mx-auto lg:py-8">
 
-        {/* LEFT: GALLERY WITH CLICK TO FULLSCREEN */}
+        {/* LEFT: GALLERY */}
         <div className="relative w-full h-[55vh] lg:h-[650px] lg:w-[500px] flex-shrink-0 rounded-[2rem] border-2 border-[#8B3E48] p-1.5 shadow-xl overflow-hidden bg-white mx-auto mb-2 group">
           <div className="w-full h-full rounded-[1.6rem] overflow-hidden bg-gray-50 relative z-0">
             <Swiper
@@ -223,18 +226,7 @@ export default function ProductDetail({ product }: { product: Product }) {
               {sliderImages.map((img: string, idx: number) => (
                 <SwiperSlide key={idx} className="bg-white h-full w-full cursor-zoom-in" onClick={() => openLightbox(idx)}>
                   <div className="swiper-zoom-container w-full h-full relative">
-                    <Image 
-                        src={img} 
-                        alt={`${product.name} - View ${idx + 1}`} 
-                        fill
-                        priority={idx === 0}
-                        quality={85} // ✅ Zoom clarity maintain rakhi hai
-                        sizes="(max-width: 768px) 100vw, 500px"
-                        className="object-cover" 
-                        onError={(e: any) => {
-                          e.currentTarget.src = "https://placehold.co/600x800/f3f4f6/9ca3af?text=Image+Not+Found";
-                        }}
-                    />
+                    <Image src={img} alt={`${product.name} - View ${idx + 1}`} fill priority={idx === 0} quality={85} sizes="(max-width: 768px) 100vw, 500px" className="object-cover" onError={(e: any) => { e.currentTarget.src = "https://placehold.co/600x800/f3f4f6/9ca3af?text=Image+Not+Found"; }} />
                   </div>
                   <div className="absolute bottom-12 right-6 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Maximize2 size={18} />
@@ -242,7 +234,6 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </SwiperSlide>
               ))}
             </Swiper>
-            
             <button aria-label="Add to wishlist" className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm p-2.5 rounded-full shadow-lg text-[#8B3E48]">
               <Heart fill="#8B3E48" size={22} />
             </button>
@@ -253,7 +244,15 @@ export default function ProductDetail({ product }: { product: Product }) {
         <div className="lg:flex-1 flex flex-col gap-4">
           <div className="pt-2">
             <h2 className="text-2xl lg:text-4xl font-serif font-bold text-gray-900 leading-tight">{product.name}</h2>
-            <div className="mt-2 flex items-center gap-4">
+            
+            {/* ✅ SMART REVIEW BADGE: Only shows if reviews exist */}
+            {reviews.length > 0 && (
+              <div className="mt-2">
+                <ReviewBadge reviews={reviews} onClick={scrollToReviews} />
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center gap-4">
                 <span className="text-3xl lg:text-4xl font-bold text-[#8B3E48]">₹{finalPrice.toLocaleString()}</span>
                 {originalPrice && <span className="text-lg text-gray-400 line-through">₹{originalPrice.toLocaleString()}</span>}
                 <span className="bg-[#8B3E48]/10 text-[#8B3E48] text-xs font-bold px-2 py-1 rounded">SALE</span>
@@ -275,16 +274,7 @@ export default function ProductDetail({ product }: { product: Product }) {
                     {product.variants.map((v: any) => (
                         <div key={v.id} onClick={() => handleVariantSwitch(v)} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer">
                             <div className={`relative w-16 h-16 rounded-2xl overflow-hidden border-[3px] p-0.5 transition-all ${selectedVariant?.id === v.id ? 'border-[#8B3E48] shadow-lg scale-110' : 'border-gray-100'}`}>
-                                <Image 
-                                    src={getFullImageUrl(v.thumbnail)} 
-                                    alt={v.color_name} 
-                                    width={64} 
-                                    height={64} 
-                                    className="object-cover rounded-xl" 
-                                    onError={(e: any) => {
-                                      e.currentTarget.src = "https://placehold.co/100x100?text=NA";
-                                    }}
-                                />
+                                <Image src={getFullImageUrl(v.thumbnail)} alt={v.color_name} width={64} height={64} className="object-cover rounded-xl" onError={(e: any) => { e.currentTarget.src = "https://placehold.co/100x100?text=NA"; }} />
                             </div>
                             <span className="text-[11px] font-bold text-gray-600">{v.color_name}</span>
                         </div>
@@ -313,28 +303,19 @@ export default function ProductDetail({ product }: { product: Product }) {
 
           <ActionButtons className="mt-2" />
           
-          {/* ✅ PREMIUM DESCRIPTION BOX ADDED HERE */}
           <div className="space-y-4 pt-6 border-t border-gray-100 mt-4">
             <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest">Product Description</h3>
-            
             <div className="relative border border-[#8B3E48]/20 bg-[#FCFBFA] p-5 rounded-2xl shadow-sm transition-all duration-300">
                 <div className={`text-gray-600 text-sm leading-relaxed whitespace-pre-line relative ${!isDescExpanded ? "line-clamp-4" : ""}`}>
                     {product.description}
-                    
-                    {/* Gradient Fade Effect when collapsed */}
                     {!isDescExpanded && (
                         <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#FCFBFA] to-transparent pointer-events-none"></div>
                     )}
                 </div>
-                
-                <button 
-                    onClick={() => setIsDescExpanded(!isDescExpanded)}
-                    className="mt-3 text-xs font-bold text-[#8B3E48] uppercase tracking-widest flex items-center gap-1 hover:text-black transition-colors"
-                >
+                <button onClick={() => setIsDescExpanded(!isDescExpanded)} className="mt-3 text-xs font-bold text-[#8B3E48] uppercase tracking-widest flex items-center gap-1 hover:text-black transition-colors">
                     {isDescExpanded ? "- Show Less" : "+ Read More"}
                 </button>
             </div>
-
             <div className="flex gap-4 overflow-x-auto scrollbar-hide pt-2">
                 <div className="bg-gray-50 px-4 py-3 rounded-2xl flex items-center gap-3 border border-gray-100 shrink-0">
                     <Truck size={20} className="text-[#8B3E48]" />
@@ -346,41 +327,24 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </div>
             </div>
           </div>
-          {/* ✅ PREMIUM DESCRIPTION BOX END */}
-
         </div>
       </div>
 
+      <ProductReviews productId={product.id} />
+
+      {/* LIGHTBOX ANIMATION */}
       <AnimatePresence>
         {isLightboxOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10000] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
             <button onClick={() => setIsLightboxOpen(false)} aria-label="Close Gallery" className="absolute top-8 right-8 text-white p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all z-[10001]">
               <X size={32} />
             </button>
-
             <div className="relative w-full h-full flex items-center justify-center">
-               <Swiper
-                initialSlide={activeImageIndex}
-                modules={[Navigation, Pagination, Zoom]}
-                navigation pagination={{ type: 'fraction' }} zoom={{ maxRatio: 3 }}
-                className="w-full h-[80vh]"
-               >
+               <Swiper initialSlide={activeImageIndex} modules={[Navigation, Pagination, Zoom]} navigation pagination={{ type: 'fraction' }} zoom={{ maxRatio: 3 }} className="w-full h-[80vh]">
                  {sliderImages.map((img, idx) => (
                    <SwiperSlide key={idx} className="flex items-center justify-center">
                       <div className="swiper-zoom-container relative w-full h-full">
-                        <Image 
-                          src={img} 
-                          alt="Full screen view" 
-                          fill
-                          quality={95} // ✅ Lightbox me full clarity
-                          className="object-contain pointer-events-none" 
-                          onError={(e: any) => {
-                            e.currentTarget.src = "https://placehold.co/800x1200/f3f4f6/9ca3af?text=Image+Not+Found";
-                          }}
-                        />
+                        <Image src={img} alt="Full screen view" fill quality={95} className="object-contain pointer-events-none" onError={(e: any) => { e.currentTarget.src = "https://placehold.co/800x1200/f3f4f6/9ca3af?text=Image+Not+Found"; }} />
                       </div>
                    </SwiperSlide>
                  ))}
@@ -391,36 +355,28 @@ export default function ProductDetail({ product }: { product: Product }) {
         )}
       </AnimatePresence>
 
+      {/* RELATED PRODUCTS */}
       <div className="max-w-6xl mx-auto px-4 mt-20 mb-20">
         <div className="flex items-center justify-between mb-10">
             <h3 className="text-2xl md:text-3xl font-serif font-bold text-gray-900">You May Also Like</h3>
             <div className="h-px flex-1 bg-gray-200 ml-10 hidden md:block"></div>
         </div>
-
         {loadingRelated ? (
-            <div className="flex justify-center py-20">
-                <Loader2 className="animate-spin text-[#8B3E48]" size={40} />
-            </div>
+            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#8B3E48]" size={40} /></div>
         ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
-                {relatedProducts.map((p) => (
-                    <ProductCard key={p.id} product={p} />
-                ))}
+                {relatedProducts.map((p) => ( <ProductCard key={p.id} product={p} /> ))}
             </div>
         )}
       </div>
 
       {showToast && (
         <div className="fixed top-20 right-0 left-0 z-[9999] flex justify-center px-4 animate-in slide-in-from-top-5 fade-in duration-300 pointer-events-none">
-            <div className="pointer-events-auto">
-                <CartToast onClose={() => setShowToast(false)} />
-            </div>
+            <div className="pointer-events-auto"><CartToast onClose={() => setShowToast(false)} /></div>
         </div>
       )}
 
-      <a href={`https://wa.me/919149796456?text=Hi, I want to buy ${product.name}`} target="_blank" rel="noopener noreferrer"
-        aria-label="Contact us on WhatsApp"
-        className="fixed bottom-8 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl z-30 hover:scale-110 transition-transform">
+      <a href={`https://wa.me/919149796456?text=Hi, I want to buy ${product.name}`} target="_blank" rel="noopener noreferrer" className="fixed bottom-8 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl z-30 hover:scale-110 transition-transform">
         <MessageCircle size={28} fill="white" />
       </a>
     </div>
