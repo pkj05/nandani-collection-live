@@ -4,13 +4,21 @@ import Link from "next/link";
 import Image from "next/image"; 
 import { ShoppingCart, Heart, Star } from "lucide-react"; 
 import { useCartStore } from "@/store/useCartStore"; 
+// ✅ Wishlist Store Import (Already here)
+import { useWishlistStore } from "@/store/useWishlistStore";
 import CartToast from "@/components/CartToast"; 
 
 export default function ProductCard({ product }: { product: any }) {
   const { addItem } = useCartStore() as any; 
+  // ✅ Wishlist Actions
+  const { wishlist, addToWishlist, removeFromWishlist } = useWishlistStore() as any;
+  
   const [showToast, setShowToast] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]); 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  // ✅ Check if product is in wishlist (Safe check)
+  const isInWishlist = wishlist ? wishlist.some((item: any) => item.id === product.id) : false;
 
   const getFullImageUrl = (path: string) => {
     if (!path || path === "" || path === "null") {
@@ -66,6 +74,17 @@ export default function ProductCard({ product }: { product: any }) {
 
   const totalStock = product.variants?.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) || 0;
 
+  // ✅ Wishlist Toggle Handler (Solidified)
+  const toggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isInWishlist) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist(product);
+    }
+  };
+
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation(); 
     if (totalStock === 0 || !selectedVariant) return;
@@ -113,8 +132,16 @@ export default function ProductCard({ product }: { product: any }) {
           {totalStock === 0 ? (
             <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white text-[10px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider shadow-sm z-10">SOLD OUT</div>
           ) : (
-            <button className="absolute top-3 right-3 h-8 w-8 flex items-center justify-center bg-white/70 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110 text-gray-900 shadow-sm z-10">
-              <Heart size={16} />
+            /* ✅ WISHLIST BUTTON: Permanent Visibility Added */
+            <button 
+              onClick={toggleWishlist}
+              className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full transition-all hover:scale-110 shadow-md z-10 bg-white ${
+                isInWishlist 
+                ? "text-[#8B3E48]" 
+                : "text-gray-900"
+              }`}
+            >
+              <Heart size={16} fill={isInWishlist ? "#8B3E48" : "none"} stroke={isInWishlist ? "#8B3E48" : "currentColor"} />
             </button>
           )}
         </div>
@@ -124,7 +151,6 @@ export default function ProductCard({ product }: { product: any }) {
           <div>
             <h3 className="text-gray-900 font-serif text-[15px] font-bold truncate group-hover:text-black transition-colors leading-tight">{product.name}</h3>
             
-            {/* ✅ SMART RATING BADGE: Only shows if reviews exist */}
             {reviews.length > 0 && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center bg-green-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">

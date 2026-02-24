@@ -6,6 +6,8 @@ import { Search, ShoppingBag, Heart, Menu, X, User, LogOut, ChevronRight, UserCi
 import { useState, useEffect, useRef } from "react"; 
 import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
+// ✅ Wishlist Store Import (Already here)
+import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuth } from "@/context/AuthContext";
 
 const Header = () => {
@@ -21,9 +23,15 @@ const Header = () => {
   const [categories, setCategories] = useState<any[]>([]);
 
   const { user, logout } = useAuth();
+  
+  // ✅ CART LOGIC
   const cart = useCartStore((state: any) => state.cart);
   const toggleCart = useCartStore((state: any) => state.toggleCart);
   const cartCount = cart ? cart.reduce((acc: number, item: any) => acc + item.quantity, 0) : 0;
+
+  // ✅ WISHLIST LOGIC (Making it functional for UI)
+  const wishlist = useWishlistStore((state: any) => state.wishlist);
+  const wishlistCount = wishlist ? wishlist.length : 0;
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -41,17 +49,11 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ✅ IMPROVED IMAGE FIXER: HTTPS and .png fix to prevent SVG Error
   const getImageUrl = (item: any) => {
-    // 1. JSON के हिसाब से सटीक जगह से इमेज उठाना
     const imgPath = item?.variants?.[0]?.thumbnail;
-
-    // 2. अगर इमेज नहीं है तो Placeholder दिखाना
     if (!imgPath) {
       return "https://placehold.co/600x800.png?text=No+Image";
     }
-
-    // 3. HTTP को HTTPS में बदलना (ताकि ब्राउज़र इसे ब्लॉक न करे)
     return imgPath.replace("http://", "https://");
   };
 
@@ -149,6 +151,24 @@ const Header = () => {
             <Search size={18} />
           </button>
 
+          {/* ✅ WISHLIST ICON WITH COUNT */}
+          <Link 
+            href="/wishlist" 
+            className={`${iconBtnClass} relative`}
+            aria-label={`View wishlist with ${wishlistCount} items`}
+          >
+            <Heart 
+                size={18} 
+                className={wishlistCount > 0 ? "text-[#8B3E48]" : "text-gray-700"} 
+                fill={wishlistCount > 0 ? "#8B3E48" : "none"} 
+            />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-gray-900 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
+
           <div className="relative" ref={userMenuRef}>
             {user ? (
               <button 
@@ -234,7 +254,6 @@ const Header = () => {
                       sizes="60px" 
                       quality={60}
                       className="object-cover rounded-xl shadow-sm" 
-                      // ✅ FIX: Image Backup if backend link breaks
                       onError={(e: any) => {
                         e.currentTarget.src = "https://placehold.co/100x150.png?text=No+Image";
                         e.currentTarget.srcset = "";
@@ -282,6 +301,19 @@ const Header = () => {
 
             <Link href="/" className="text-xl font-bold text-gray-900 py-4 border-b border-gray-50 flex items-center justify-between" onClick={() => setIsMenuOpen(false)}>
               Home <ChevronRight size={16} className="text-gray-300" />
+            </Link>
+
+            {/* ✅ MOBILE WISHLIST LINK (Inside Sidebar) */}
+            <Link 
+                href="/wishlist" 
+                className="text-xl font-bold text-gray-900 py-4 border-b border-gray-50 flex items-center justify-between" 
+                onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="flex items-center gap-2">
+                My Wishlist 
+                {wishlistCount > 0 && <span className="bg-[#8B3E48] text-white text-[10px] px-2 py-0.5 rounded-full">{wishlistCount}</span>}
+              </span>
+              <ChevronRight size={16} className="text-gray-300" />
             </Link>
 
             <Link href="/orders" className="text-xl font-bold text-gray-900 py-4 border-b border-gray-50 flex items-center justify-between" onClick={() => setIsMenuOpen(false)}>

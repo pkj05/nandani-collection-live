@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useCartStore } from "@/store/useCartStore";
+// ✅ Wishlist Store Import (Already here, making it functional)
+import { useWishlistStore } from "@/store/useWishlistStore";
 import { Heart, MessageCircle, Truck, RotateCcw, Loader2, X, Maximize2, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image"; 
@@ -46,6 +48,11 @@ interface Product {
 export default function ProductDetail({ product }: { product: Product }) {
   const router = useRouter();
   const { addItem, cart } = useCartStore() as any;
+  
+  // ✅ WISHLIST LOGIC (Linked to Store)
+  const { addToWishlist, removeFromWishlist, wishlist } = useWishlistStore() as any;
+  const isWishlisted = wishlist.some((item: any) => item.id === product.id);
+
   const swiperRef = useRef<any>(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://nandanicollection.com";
   
@@ -146,6 +153,15 @@ export default function ProductDetail({ product }: { product: Product }) {
     }
   };
 
+  // ✅ UPDATED WISHLIST TOGGLE
+  const handleWishlistToggle = () => {
+    if (isWishlisted) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist(product);
+    }
+  };
+
   const handleAddToCart = (isBuyNow = false) => {
     if (qtyInCart >= currentStock) {
         alert("Maximum stock limit reached!");
@@ -234,8 +250,19 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </SwiperSlide>
               ))}
             </Swiper>
-            <button aria-label="Add to wishlist" className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm p-2.5 rounded-full shadow-lg text-[#8B3E48]">
-              <Heart fill="#8B3E48" size={22} />
+            
+            {/* ✅ FUNCTIONAL WISHLIST BUTTON (Linked to Store) */}
+            <button 
+              onClick={handleWishlistToggle}
+              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"} 
+              className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm p-2.5 rounded-full shadow-lg transition-transform active:scale-125"
+            >
+              <Heart 
+                fill={isWishlisted ? "#8B3E48" : "none"} 
+                stroke="#8B3E48" 
+                className={isWishlisted ? "text-[#8B3E48]" : "text-[#8B3E48]"}
+                size={22} 
+              />
             </button>
           </div>
         </div>
@@ -245,7 +272,6 @@ export default function ProductDetail({ product }: { product: Product }) {
           <div className="pt-2">
             <h2 className="text-2xl lg:text-4xl font-serif font-bold text-gray-900 leading-tight">{product.name}</h2>
             
-            {/* ✅ SMART REVIEW BADGE: Only shows if reviews exist */}
             {reviews.length > 0 && (
               <div className="mt-2">
                 <ReviewBadge reviews={reviews} onClick={scrollToReviews} />
