@@ -3,6 +3,7 @@ import traceback
 import time
 from ninja import Router, Schema
 from django.contrib.auth import get_user_model
+from django.db import models # ✅ Q objects ke liye
 from ninja_jwt.tokens import RefreshToken
 from ninja_jwt.authentication import JWTAuth
 from .schemas import SocialAuthSchema, TokenSchema
@@ -49,8 +50,64 @@ class ProfileUpdateSchema(Schema):
 
 
 # ---------------------------------------------------------
-# ✅ 3. HELPER FUNCTIONS
+# ✅ 3. HELPER FUNCTIONS & AUTO-SYNC
 # ---------------------------------------------------------
+def sync_guest_orders_to_user(user):
+    """
+    ⭐ AUTO-SYNC LOGIC ⭐
+    Agar user ka phone number kisi purane order se match hota hai,
+    toh wahan se details utha kar profile me bhar do.
+    """
+    try:
+        from orders.models import Order # Import andar rakha taaki circular dependency na aaye
+        
+        phone = str(user.phone_number)
+        clean_phone = phone[-10:] if len(phone) >= 10 else phone
+        phone_with_prefix = f"+91{clean_phone}"
+
+        # Is number ke purane sabhi orders nikalo
+        past_orders = Order.objects.filter(
+            models.Q(phone_number=phone) | 
+            models.Q(phone_number=clean_phone) | 
+            models.Q(phone_number=phone_with_prefix)
+        ).order_by('-created_at')
+
+        latest_order = past_orders.first()
+
+        # Agar order mil gaya toh profile me details chipka do
+        if latest_order:
+            changed = False
+            
+            if not user.first_name and getattr(latest_order, 'full_name', None):
+                user.first_name = latest_order.full_name
+                changed = True
+                
+            if not getattr(user, 'address', None) and getattr(latest_order, 'address', None):
+                user.address = latest_order.address
+                changed = True
+                
+            if not getattr(user, 'pincode', None) and getattr(latest_order, 'pincode', None):
+                user.pincode = latest_order.pincode
+                changed = True
+                
+            if not user.email and getattr(latest_order, 'email', None):
+                user.email = latest_order.email
+                changed = True
+
+            if changed:
+                user.save()
+                print(f"✅ AUTO-SYNC: Profile auto-filled from Order #{latest_order.id}")
+
+        # ✅ BONUS: In sabhi guest orders ko user account se link kar do
+        unlinked_orders = past_orders.filter(user__isnull=True)
+        if unlinked_orders.exists():
+            linked_count = unlinked_orders.update(user=user)
+            print(f"🔗 Linked {linked_count} past guest orders to this account.")
+
+    except Exception as e:
+        print(f"⚠️ Sync Error: {e}")
+
+
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -73,7 +130,7 @@ def get_tokens_for_user(user):
 # ✅ 4. API ENDPOINTS
 # ---------------------------------------------------------
 
-# --- A. GOOGLE LOGIN (Existing) ---
+# --- A. GOOGLE LOGIN ---
 @router.post("/google", response=TokenSchema)
 def google_login(request, data: SocialAuthSchema):
     user, created = User.objects.get_or_create(
@@ -87,7 +144,7 @@ def google_login(request, data: SocialAuthSchema):
     return get_tokens_for_user(user)
 
 
-# --- B. FIREBASE PHONE LOGIN (New & Main) ---
+# --- B. FIREBASE PHONE LOGIN (Auto-Sync Added) ---
 @router.post("/firebase-login", response={200: TokenSchema, 400: dict, 500: dict})
 def firebase_login(request, data: FirebaseAuthSchema):
     try:
@@ -119,11 +176,14 @@ def firebase_login(request, data: FirebaseAuthSchema):
             user = User.objects.create(
                 phone_number=phone_number,
                 username=base_username,
-                auth_provider='firebase', # Provider change kiya
+                auth_provider='firebase', 
                 is_verified=True
             )
         
-        # 3. Tokens Return karo
+        # ⭐ 3. CALL AUTO-SYNC LOGIC HERE ⭐
+        sync_guest_orders_to_user(user)
+        
+        # 4. Tokens Return karo
         return 200, get_tokens_for_user(user)
 
     except Exception as e:
@@ -145,7 +205,7 @@ def get_me(request):
     }
 
 
-# --- D. UPDATE PROFILE (Debug Logic Ke Sath) ---
+# --- D. UPDATE PROFILE ---
 @router.post("/update-profile", auth=JWTAuth(), response={200: dict, 400: dict, 500: dict})
 def update_profile(request, data: ProfileUpdateSchema):
     try:

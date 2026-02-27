@@ -35,7 +35,7 @@ class Order(models.Model):
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     shipping_charges = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
-    # ✅ Coupon Linkage (Naya Field)
+    # ✅ Coupon Linkage
     # SET_NULL rakha hai taaki agar kabhi admin coupon delete bhi kar de, toh order history kharab na ho
     applied_coupon = models.ForeignKey(
         Coupon, 
@@ -47,6 +47,9 @@ class Order(models.Model):
     
     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='upi')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # ✅ New field for Invoice / Bill (Added here)
+    invoice_no = models.CharField(max_length=50, null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

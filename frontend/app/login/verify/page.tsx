@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
-import { auth } from "@/firebase"; // ✅ Firebase Import
+import { auth } from "@/firebase"; 
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { motion, AnimatePresence } from "framer-motion"; 
 
-// ✅ FIX: TypeScript ko batao ki window me recaptchaVerifier hai
 declare global {
   interface Window {
     recaptchaVerifier: any;
@@ -19,71 +19,96 @@ function VerifyContent() {
   const router = useRouter();
   const { login } = useAuth();
   
-  // URL se phone number nikalo aur clean karo
   const rawPhone = searchParams.get("phone") || "";
-  // Ensure +91 format
   const phone = rawPhone.startsWith("+") ? rawPhone : `+91${rawPhone.trim()}`;
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [msg, setMsg] = useState(""); // User feedback message
+  const [msg, setMsg] = useState(""); 
+  const [showSuccessToast, setShowSuccessToast] = useState(false); 
   
-  // Firebase Confirmation Object
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  // ✅ Hardcoded API URL
+  // ✅ FIX: React StrictMode se bachne ke liye taaki OTP 2 baar na jaye
+  const otpSentOnce = useRef(false);
+
   const API_URL = "https://www.nandanicollection.com/api";
 
-  // 1. Initialize Recaptcha & Auto Send OTP on Mount
-  useEffect(() => {
-    if (!phone || phone.length < 10) return;
-
-    // ✅ FIX: Window object check ke sath init karo
+  // ✅ FIX: Recaptcha ko safely initialize karne ka function
+  const setupRecaptcha = () => {
     if (typeof window !== "undefined" && !window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
         'callback': () => {
-           console.log("Recaptcha Solved");
+             console.log("Recaptcha verified automatically");
         }
       });
     }
+  };
 
-    // Agar pehli baar page load hua hai to OTP bhejo
-    if (!confirmationResult) {
-       sendOtpToUser();
+  // ✅ FIX: Fast & Safe Invisible Recaptcha Setup
+  useEffect(() => {
+    if (!phone || phone.length < 10) return;
+
+    // 🚨 ANTI-CRASH LOGIC: Hamesha purana recaptcha clear karo naya banane se pehle
+    if (window.recaptchaVerifier) {
+      try { window.recaptchaVerifier.clear(); } catch(e) {}
+      window.recaptchaVerifier = null;
     }
+
+    setupRecaptcha();
+
+    // Sirf pehli baar hi OTP bhejo
+    if (!otpSentOnce.current) {
+      otpSentOnce.current = true;
+      if (!confirmationResult) {
+         sendOtpToUser();
+      }
+    }
+
+    // 🚨 CLEANUP: Jab user page chhod kar jaye toh memory se recaptcha delete kar do
+    return () => {
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch(e) {}
+        window.recaptchaVerifier = null;
+      }
+      otpSentOnce.current = false;
+    };
   }, [phone]);
 
-  // --- FUNCTION: Send OTP (Firebase) ---
   const sendOtpToUser = async () => {
     setLoading(true);
     setError("");
-    setMsg("Sending OTP...");
+    setMsg("Sending secure code...");
     
     try {
-      if (!window.recaptchaVerifier) return;
-      
+      // ✅ FIX: Firebase ko 'appVerifier' chahiye hi chahiye
+      setupRecaptcha(); // Safety Fallback
       const appVerifier = window.recaptchaVerifier;
+      
       const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
       setConfirmationResult(confirmation);
       setMsg("OTP Sent Successfully! ✅");
     } catch (err: any) {
       console.error("OTP Send Error:", err);
-      setError(err.message || "Failed to send OTP. Try 'Resend'.");
+      if (err.code === 'auth/too-many-requests') {
+        setError("Too many attempts. Please wait a minute and try again.");
+      } else {
+        setError("Failed to send OTP. Please try clicking 'Resend'.");
+      }
       setMsg("");
-      
-      // Agar recaptcha error hai to reset karo
+
+      // Agar fail hua to recaptcha reset karo taaki resend chal sake
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = null;
+         try { window.recaptchaVerifier.clear(); } catch(e) {}
+         window.recaptchaVerifier = null;
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // --- FUNCTION: Verify & Login ---
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -101,29 +126,32 @@ function VerifyContent() {
     setError("");
 
     try {
-      // 1. Firebase Verify (Client Side)
       const result = await confirmationResult.confirm(otp);
-      const idToken = await result.user.getIdToken(); // 🔥 Ye hai असली Token
+      const idToken = await result.user.getIdToken(); 
 
-      console.log("Firebase Verified! Token Generated.");
-
-      // 2. Backend Login (Server Side)
       const response = await fetch(`${API_URL}/accounts/firebase-login`, {  
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-            id_token: idToken 
-        }),
+        body: JSON.stringify({ id_token: idToken }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // ✅ Login Success
         const token = data.token || data.access_token;
         if (token) {
-            login(token, data.user || {}); 
-            router.push("/"); 
+            setShowSuccessToast(true);
+            setTimeout(() => {
+                login(token, data.user || {}); 
+                const userData = data.user || {};
+                const isProfileIncomplete = !userData.full_name || !userData.address;
+
+                if (isProfileIncomplete) {
+                    router.push("/profile");
+                } else {
+                    router.push("/");
+                }
+            }, 1500);
         } else {
             setError("Login failed: Token missing from server");
         }
@@ -143,10 +171,28 @@ function VerifyContent() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 bg-gray-50 font-sans">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 bg-gray-50 font-sans relative">
+      
+      {/* SUCCESS NOTIFICATION */}
+      <AnimatePresence>
+        {showSuccessToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-10 z-[100] bg-black text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-white/10"
+          >
+            <div className="bg-green-500 rounded-full p-1">
+                <CheckCircle2 size={16} className="text-white" />
+            </div>
+            <p className="text-sm font-bold tracking-wide uppercase">Login Successful!</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-md w-full bg-white rounded-[2.5rem] p-8 md:p-12 shadow-xl border border-gray-100 text-center">
         
-        {/* Invisible Recaptcha Container */}
+        {/* ✅ YE ZAROORI HAI: Firebase ke invisible recaptcha ke liye */}
         <div id="recaptcha-container"></div>
 
         <div className="inline-flex items-center justify-center w-16 h-16 bg-green-50 rounded-full mb-6">
@@ -159,7 +205,6 @@ function VerifyContent() {
             <span className="font-bold text-gray-900">{phone}</span>
         </p>
 
-        {/* Status Messages */}
         {msg && <p className="text-green-600 text-xs font-bold mb-4">{msg}</p>}
 
         {error && (
@@ -181,7 +226,7 @@ function VerifyContent() {
 
           <button 
             type="submit" 
-            disabled={loading}
+            disabled={loading || showSuccessToast}
             className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-black shadow-xl active:scale-95 disabled:bg-gray-400 uppercase tracking-widest text-xs"
           >
             {loading ? <Loader2 className="animate-spin" /> : <>VERIFY & LOGIN <CheckCircle2 size={18} /></>}
@@ -193,7 +238,7 @@ function VerifyContent() {
           <button 
             type="button" 
             onClick={sendOtpToUser} 
-            disabled={loading}
+            disabled={loading || showSuccessToast}
             className="text-[#8B3E48] hover:text-black transition-colors ml-1 disabled:opacity-50"
           >
             Resend

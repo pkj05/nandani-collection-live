@@ -31,6 +31,11 @@ class OrderOutSchema(Schema):
     
     status: str
     created_at: datetime
+    
+    # 👇 ✅ FIXED: Added Optional and None to prevent payment errors 👇
+    updated_at: Optional[datetime] = None
+    invoice_no: Optional[str] = None
+    
     # ✅ ये लाइन लिस्ट दिखाने के लिए सबसे ज़रूरी है
     items: List[OrderItemOutSchema]
 

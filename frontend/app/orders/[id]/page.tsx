@@ -8,9 +8,13 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { 
   Package, Truck, CheckCircle2, Clock, MapPin, 
-  ChevronLeft, ShoppingBag, Receipt, Loader2, Lock
-} from "lucide-react";
+  ChevronLeft, ShoppingBag, Receipt, Loader2, Lock, Download,
+  XCircle, RefreshCw 
+} from "lucide-react"; 
 import Link from "next/link";
+
+// ✅ Invoice generate karne ka logic import kiya
+import { generateProfessionalInvoice } from "@/lib/invoice";
 
 export default function OrderTrackingPage() {
   const params = useParams();
@@ -80,15 +84,46 @@ export default function OrderTrackingPage() {
     </div>
   );
 
-  // --- ✅ YAHAN SE AAPKA PURANA DESIGN SHURU ---
-  const currentStatus = order.status ? order.status.toLowerCase() : "pending";
+  // --- ✅ YAHAN SE AAPKA PURANA DESIGN SHURU (WITH CLEAN UPDATES) ---
   
-  const steps = [
-    { label: "Order Placed", date: order.created_at, icon: <Package size={18} />, active: true },
-    { label: "Processing", desc: "Packing", icon: <Clock size={18} />, active: ["confirmed", "shipped", "delivered"].includes(currentStatus) },
-    { label: "Shipped", desc: "On the way", icon: <Truck size={18} />, active: ["shipped", "delivered"].includes(currentStatus) },
-    { label: "Delivered", desc: "Completed", icon: <CheckCircle2 size={18} />, active: currentStatus === "delivered" }
-  ];
+  // .trim() lagaya hai taaki backend se space aaye to condition fail na ho
+  const currentStatus = order.status ? order.status.toLowerCase().trim() : "pending";
+  
+  // Dynamic Badge Color Logic
+  let badgeColor = "bg-orange-50 text-orange-600 border-orange-100";
+  if (currentStatus === "shipped") badgeColor = "bg-blue-50 text-blue-600 border-blue-100";
+  if (currentStatus === "delivered") badgeColor = "bg-green-50 text-green-600 border-green-100";
+  if (currentStatus === "cancelled") badgeColor = "bg-red-50 text-red-600 border-red-100";
+  if (currentStatus === "return_requested" || currentStatus === "returned") badgeColor = "bg-purple-50 text-purple-600 border-purple-100";
+
+  // ✅ New Smart Tracking Steps (With Cancelled & Return Logic directly using backend dates)
+  let steps: any[] = [];
+  
+  if (currentStatus === "cancelled") {
+    steps = [
+      { label: "Order Placed", date: order.created_at, icon: <Package size={18} />, active: true, isRed: false },
+      { label: "Order Cancelled", desc: "Refund initiated", date: order.updated_at, icon: <XCircle size={18} />, active: true, isRed: true }
+    ];
+  } else {
+    // Normal Flow (Replaced 'Processing' with 'Confirmed')
+    steps = [
+      { label: "Order Placed", date: order.created_at, icon: <Package size={18} />, active: true, isRed: false },
+      { label: "Confirmed", desc: "Packing", date: ["confirmed", "shipped", "delivered", "return_requested", "returned"].includes(currentStatus) ? order.updated_at : null, icon: <Clock size={18} />, active: ["confirmed", "shipped", "delivered", "return_requested", "returned"].includes(currentStatus), isRed: false },
+      { label: "Shipped", desc: "On the way", date: ["shipped", "delivered", "return_requested", "returned"].includes(currentStatus) ? order.updated_at : null, icon: <Truck size={18} />, active: ["shipped", "delivered", "return_requested", "returned"].includes(currentStatus), isRed: false },
+      { label: "Delivered", desc: "Completed", date: ["delivered", "return_requested", "returned"].includes(currentStatus) ? order.updated_at : null, icon: <CheckCircle2 size={18} />, active: ["delivered", "return_requested", "returned"].includes(currentStatus), isRed: false }
+    ];
+
+    // Append Return Steps if applicable
+    if (currentStatus === "return_requested" || currentStatus === "returned") {
+      steps.push({ label: "Return Requested", desc: "Processing Return", date: order.updated_at, icon: <RefreshCw size={18} />, active: true, isRed: false });
+    }
+    if (currentStatus === "returned") {
+      steps.push({ label: "Returned", desc: "Refund Processed", date: order.updated_at, icon: <CheckCircle2 size={18} />, active: true, isRed: false });
+    }
+  }
+
+  // ✅ Bulletproof Condition to Hide Invoice
+  const isInvoiceHidden = ["cancelled", "return_requested", "returned"].includes(currentStatus);
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20 font-sans">
@@ -106,7 +141,7 @@ export default function OrderTrackingPage() {
               <p className="text-[10px] font-black text-[#8B3E48] uppercase tracking-[0.2em] mb-1">Live Tracking</p>
               <h1 className="text-2xl font-black text-gray-900 font-mono">#NDN-{order.id.toString().padStart(4, '0')}</h1>
             </div>
-            <div className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border ${currentStatus === 'delivered' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+            <div className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border ${badgeColor}`}>
               {order.status}
             </div>
           </div>
@@ -115,13 +150,14 @@ export default function OrderTrackingPage() {
             <div className="absolute left-[17px] top-2 bottom-2 w-0.5 bg-gray-100" />
             {steps.map((step, idx) => (
               <div key={idx} className="flex gap-6 relative">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${step.active ? 'bg-[#8B3E48] text-white shadow-lg shadow-[#8B3E48]/30' : 'bg-white border-2 border-gray-100 text-gray-300'}`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${step.isRed ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : step.active ? 'bg-[#8B3E48] text-white shadow-lg shadow-[#8B3E48]/30' : 'bg-white border-2 border-gray-100 text-gray-300'}`}>
                   {step.icon}
                 </div>
                 <div className="flex-1">
-                  <p className={`text-sm font-black uppercase tracking-wide ${step.active ? 'text-gray-900' : 'text-gray-300'}`}>{step.label}</p>
+                  <p className={`text-sm font-black uppercase tracking-wide ${step.isRed ? 'text-red-500' : step.active ? 'text-gray-900' : 'text-gray-300'}`}>{step.label}</p>
                   <p className="text-[10px] text-gray-400 font-bold mt-0.5">
-                    {step.active ? (step.date ? new Date(step.date).toLocaleDateString('en-IN', {day:'numeric', month:'short'}) : "Updated") : "Waiting..."}
+                    {/* ✅ CLEAN DATE FORMATTING DIRECTLY FROM BACKEND */}
+                    {step.active ? (step.date ? new Date(step.date).toLocaleString('en-IN', {day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true}) : "Updated") : "Waiting..."}
                   </p>
                 </div>
               </div>
@@ -129,7 +165,7 @@ export default function OrderTrackingPage() {
           </div>
         </div>
 
-        {/* 2. Items List (Jo gayab ho gaya tha) */}
+        {/* 2. Items List */}
         <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm mb-6">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
             <ShoppingBag size={14} className="text-[#8B3E48]" /> Items in this Order
@@ -154,7 +190,7 @@ export default function OrderTrackingPage() {
           </div>
         </div>
 
-        {/* 3. Address & Bill Info (Ye bhi wapas aa gaya) */}
+        {/* 3. Address & Bill Info */}
         <div className="grid grid-cols-1 gap-4">
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -178,6 +214,17 @@ export default function OrderTrackingPage() {
                 <span className="text-[#8B3E48]">₹{order.total_amount.toLocaleString()}</span>
               </div>
             </div>
+
+            {/* ✅ HIDE INVOICE BUTTON IF CANCELLED OR RETURNED */}
+            {!isInvoiceHidden && (
+              <button 
+                onClick={() => generateProfessionalInvoice(order)}
+                className="w-full mt-6 bg-[#8B3E48]/10 text-[#8B3E48] py-4 rounded-2xl font-black flex items-center justify-center gap-3 uppercase tracking-widest text-[11px] hover:bg-[#8B3E48] hover:text-white transition-all active:scale-[0.98]"
+              >
+                <Download size={16} /> Download GST Invoice
+              </button>
+            )}
+
           </div>
         </div>
 

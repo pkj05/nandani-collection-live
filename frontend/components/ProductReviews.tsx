@@ -261,22 +261,46 @@ export default function ProductReviews({ productId }: ReviewProps) {
         ) : (
           <div className="space-y-8">
             {reviews.map((rev) => {
-              const isMyReview = user && (rev.user_name === user.full_name || rev.user_name === "Nandani Customer" || rev.user_name === user.username);
+              
+              // ✅ BUG FIX 1: PERFECT EDIT LOGIC (Ab ID se direct match karega)
+              // Agar user_id backend se aa raha hai (schemas.py me add karne ke baad), toh exact match hoga
+              const isMyReview = user && rev.user_id && String(rev.user_id) === String(user.id);
+
+              // ✅ BUG FIX 2: PERFECT NAME LOGIC
+              // Jo backend bhejega (चाहे पंकज हो या Customer), वही सीधा दिखेगा, कोई फालतू चेकिंग नहीं।
+              const displayName = rev.user_name || "Customer";
+
+              // State ya City nikalna
+              let displayLocation = "";
+              if (displayName.toLowerCase() !== "customer") {
+                if (rev.state && rev.state.trim() !== "") {
+                  displayLocation = `, ${rev.state}`;
+                } else if (rev.city && rev.city.trim() !== "") {
+                  displayLocation = `, ${rev.city}`;
+                }
+              }
+
+              const finalDisplayString = `${displayName}${displayLocation}`;
+              const avatarLetter = displayName.charAt(0).toUpperCase();
+
               return (
                 <div key={rev.id} className="border-b border-gray-100 pb-8 last:border-0 relative">
+                  
+                  {/* Edit Button */}
                   {isMyReview && (
                     <button onClick={() => handleEditReview(rev)} className="absolute top-0 right-0 text-xs font-bold text-[#8B3E48] bg-[#8B3E48]/5 px-3 py-1.5 rounded-full hover:bg-[#8B3E48]/10 transition-colors flex items-center gap-1.5">
                       <Pencil size={12} /> Edit
                     </button>
                   )}
+
                   <div className="flex items-center justify-between mb-3 pr-20">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600 border border-gray-200">
-                        {rev.user_name ? rev.user_name.charAt(0).toUpperCase() : "U"}
+                        {avatarLetter}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-gray-900">{rev.user_name || "Nandani Customer"}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-bold text-gray-900">{finalDisplayString}</p>
                           <div className="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
                             <BadgeCheck size={12} className="text-green-600" />
                             <span className="text-[9px] font-bold text-green-700 uppercase tracking-tight">Verified Purchase</span>

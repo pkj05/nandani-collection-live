@@ -3,8 +3,13 @@
 import { useEffect, useState, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, ShoppingBag, Truck, ArrowRight, Star, ReceiptText, Copy, CheckCircle2, MessageCircle, Loader2, Sparkles, ShieldCheck } from "lucide-react";
+import { Check, ShoppingBag, Truck, ArrowRight, Star, ReceiptText, Copy, CheckCircle2, MessageCircle, Loader2, Sparkles, ShieldCheck, Download } from "lucide-react"; 
 import confetti from "canvas-confetti";
+
+// ✅ 1. Import Invoice Utility
+import { generateProfessionalInvoice } from "@/lib/invoice";
+// ✅ 2. Import API Function
+import { getOrderDetails } from "@/lib/api";
 
 interface WheelItem {
   id: number;
@@ -26,6 +31,9 @@ function SuccessContent() {
   const [hasSpun, setHasSpun] = useState(false);
   const wheelRef = useRef<HTMLDivElement>(null);
 
+  // ✅ State to hold full order details for the Invoice
+  const [orderDetails, setOrderDetails] = useState<any>(null);
+
   // ✅ ONLINE PAYMENT LOGIC: Checking if it's a PhonePe Transaction (Starts with 'T') or COD
   const isOnlinePayment = rawOrderId?.startsWith("T");
   const formattedOrderId = rawOrderId 
@@ -34,7 +42,7 @@ function SuccessContent() {
       : `NDN-2026-${rawOrderId.toString().padStart(4, '0')}` 
     : "NDN-2026-WAIT";
 
-  // --- CHECK IF ALREADY SPUN ON LOAD ---
+  // --- CHECK IF ALREADY SPUN ON LOAD & FETCH ORDER DETAILS ---
   useEffect(() => {
     const initPage = async () => {
       if (!rawOrderId) return;
@@ -61,6 +69,13 @@ function SuccessContent() {
           // Pehli baar aaya hai toh celebration
           confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         }
+
+        // ✅ 3. FETCH ORDER DETAILS USING OUR NEW API FUNCTION
+        const orderData = await getOrderDetails(rawOrderId);
+        if (orderData) {
+          setOrderDetails(orderData);
+        }
+
       } catch (err) {
         console.error("Initialization failed", err);
       }
@@ -190,7 +205,6 @@ function SuccessContent() {
                         stroke="rgba(255,255,255,0.15)"
                         strokeWidth="0.4"
                       />
-                      {/* ADJUSTED TEXT: Size reduced to 4.2 and x-position moved to 74 */}
                       <text
                         x="74" y="50"
                         fill="white"
@@ -266,6 +280,17 @@ function SuccessContent() {
               <p className="text-[11px] text-gray-500 leading-relaxed mt-1">Aapka exclusive collection 3-5 dino mein pahunchega.</p>
             </div>
           </div>
+
+          {/* ✅ DOWNLOAD INVOICE BUTTON */}
+          {orderDetails && (
+            <button 
+              onClick={() => generateProfessionalInvoice(orderDetails)}
+              className="w-full mt-4 bg-[#8B3E48]/10 text-[#8B3E48] py-4 rounded-2xl font-black flex items-center justify-center gap-3 uppercase tracking-widest text-[11px] hover:bg-[#8B3E48]/20 transition-all active:scale-[0.98]"
+            >
+              <Download size={16} /> Download GST Invoice
+            </button>
+          )}
+
         </div>
 
         {/* Bottom Actions */}

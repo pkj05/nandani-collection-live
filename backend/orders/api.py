@@ -8,6 +8,7 @@ from django.db import transaction, models
 from django.contrib.auth import get_user_model
 from ninja_jwt.authentication import JWTAuth 
 from decimal import Decimal
+import datetime # ✅ Invoice no generate karne ke liye
 
 User = get_user_model()
 router = Router()
@@ -76,6 +77,33 @@ def create_order(request, data: OrderCreateSchema):
                 shipping_charges=data.shipping_charges,
                 status='pending'
             )
+
+            # ✅ 1.5 INVOICE NUMBER GENERATION LOGIC (NEW)
+            current_year = datetime.date.today().year
+            order.invoice_no = f"NC-{current_year}-{order.id:04d}" 
+            order.save()
+
+            # ⭐ NEW: AUTO-UPDATE USER PROFILE LOGIC ⭐
+            # Agar user logged in hai ya phone se match ho gaya hai
+            if user_instance:
+                changed = False
+                
+                # Agar name nahi hai toh update karo
+                if not getattr(user_instance, 'full_name', None) or user_instance.full_name.strip() == "":
+                    user_instance.full_name = data.full_name
+                    changed = True
+                
+                # Agar state/city/address update karna ho (Models me field hone chahiye)
+                if hasattr(user_instance, 'address') and (not user_instance.address or user_instance.address.strip() == ""):
+                    user_instance.address = data.address
+                    changed = True
+                
+                if hasattr(user_instance, 'pincode') and (not user_instance.pincode or user_instance.pincode.strip() == ""):
+                    user_instance.pincode = data.pincode
+                    changed = True
+
+                if changed:
+                    user_instance.save()
 
             # 2. Items Process Karo
             for item in data.items:
@@ -153,3 +181,14 @@ def get_my_orders(request):
     print(f"--- FOUND {orders.count()} ORDERS ---")
     
     return orders
+
+# ✅ --- 3. GET: Single Order Details ---
+@router.get("/{order_id}", response={200: OrderOutSchema, 404: MessageSchema})
+def get_order_detail(request, order_id: str):
+    try:
+        order = Order.objects.get(id=order_id)
+        return 200, order
+    except Order.DoesNotExist:
+        return 404, {"success": False, "message": "Order nahi mila."}
+    except ValueError:
+        return 400, {"success": False, "message": "Invalid Order ID."}

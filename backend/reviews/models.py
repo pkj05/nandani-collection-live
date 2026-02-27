@@ -21,12 +21,20 @@ class Review(models.Model):
     image_2 = models.ImageField(upload_to='reviews/images/', blank=True, null=True)
     image_3 = models.ImageField(upload_to='reviews/images/', blank=True, null=True)
     
+    # ✅ NEW: Helpful (Likes) track karne ke liye ManyToManyField
+    likes = models.ManyToManyField(User, related_name="liked_reviews", blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         # एक यूजर एक प्रोडक्ट पर सिर्फ एक ही रिव्यु दे सकता है (Spam Protection)
         unique_together = ('product', 'user')
         ordering = ['-created_at'] # सबसे नए रिव्यु सबसे ऊपर दिखेंगे
+
+    # ✅ NEW: Total likes count get karne ke liye property
+    @property
+    def helpful_count(self):
+        return self.likes.count()
 
     def __str__(self):
         return f"{self.user.phone_number} - {self.product.name} ({self.rating} Stars)"

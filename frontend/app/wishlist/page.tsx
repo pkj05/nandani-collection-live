@@ -3,37 +3,32 @@
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useCartStore } from "@/store/useCartStore";
 import ProductCard from "@/components/ProductCard";
-import { Heart, ShoppingBag, ArrowLeft, Trash2, Sparkles, X, CheckCircle2 } from "lucide-react"; 
+import { Heart, ArrowLeft, Trash2, Sparkles, X, CheckCircle2 } from "lucide-react"; 
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react"; // ✅ Notification state के लिए
+import { useState, useEffect } from "react"; // ✅ useEffect import किया
 
 export default function WishlistPage() {
   const { wishlist, removeFromWishlist, clearWishlist } = useWishlistStore() as any;
-  const { addItem } = useCartStore() as any;
-  const [movedItem, setMovedItem] = useState<string | null>(null); // ✅ Success message handle करने के लिए
+  const { cart } = useCartStore() as any; // ✅ addItem की जगह cart ले लिया
+  const [movedItem, setMovedItem] = useState<string | null>(null);
 
-  // विशलिस्ट से कार्ट में डालने का फंक्शन
-  const moveToCart = (product: any) => {
-    const payload = {
-      id: product.id,
-      variant_id: product.variants?.[0]?.id || product.id,
-      name: product.name,
-      price: product.selling_price || product.base_price || product.price,
-      image: product.thumbnail,
-      quantity: 1,
-      stock: product.stock || 10,
-    };
-    
-    const success = addItem(payload);
-    if (success) {
-      setMovedItem(product.name); // Success message दिखाओ
-      setTimeout(() => {
-        removeFromWishlist(product.id); // थोड़ी देर बाद विशलिस्ट से हटाओ
-        setMovedItem(null);
-      }, 1500);
+  // ✅ SMART LOGIC: अगर कोई आइटम कार्ट में आ गया है, तो उसे विशलिस्ट से हटा दो
+  useEffect(() => {
+    // चेक करो कि विशलिस्ट का कौन सा आइटम कार्ट में मौजूद है
+    const itemsInCart = wishlist.filter((wItem: any) => 
+      cart.some((cItem: any) => cItem.id === wItem.id)
+    );
+
+    // अगर कोई आइटम मैच होता है, तो उसे विशलिस्ट से रिमूव करो और नोटिफिकेशन दिखाओ
+    if (itemsInCart.length > 0) {
+      itemsInCart.forEach((item: any) => {
+        removeFromWishlist(item.id);
+        setMovedItem(item.name); // Success message दिखाओ
+        setTimeout(() => setMovedItem(null), 2000); // 2 सेकंड बाद मैसेज हटाओ
+      });
     }
-  };
+  }, [cart, wishlist, removeFromWishlist]);
 
   // Animation variants for stagger effect
   const containerVariants = {
@@ -52,7 +47,7 @@ export default function WishlistPage() {
   return (
     <div className="min-h-screen bg-[#FCFBFA] pb-20">
       
-      {/* ✅ Move to Bag Success Notification */}
+      {/* ✅ Add to Bag Success Notification */}
       <AnimatePresence>
         {movedItem && (
           <motion.div 
@@ -109,7 +104,6 @@ export default function WishlistPage() {
               <p className="text-gray-400 max-w-sm mx-auto mb-10 leading-relaxed">
                 Pieces you heart while shopping will appear here for you to revisit anytime.
               </p>
-              {/* ✅ Link updated to Homepage */}
               <Link 
                 href="/" 
                 className="bg-[#8B3E48] text-white px-12 py-4 rounded-full font-bold text-xs uppercase tracking-[0.2em] shadow-xl shadow-[#8B3E48]/30 hover:bg-[#6d3139] hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
@@ -146,14 +140,6 @@ export default function WishlistPage() {
                   <div className="flex-grow">
                     <ProductCard product={product} />
                   </div>
-                  
-                  {/* Quick Action Button */}
-                  <button 
-                    onClick={() => moveToCart(product)}
-                    className="w-full mt-4 bg-white border-2 border-[#8B3E48]/10 text-[#8B3E48] py-3.5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 hover:bg-[#8B3E48] hover:text-white hover:border-[#8B3E48] transition-all duration-300 shadow-sm group-hover:shadow-md"
-                  >
-                    <ShoppingBag size={15} /> Move to Bag
-                  </button>
                 </motion.div>
               ))}
             </motion.div>

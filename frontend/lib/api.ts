@@ -66,3 +66,19 @@ export async function getShopData() {
     return { categories: [], announcements: [], banners: [] }; 
   }
 }
+
+// 4. ✅ Get Order Details (For Invoice and Success Page)
+export async function getOrderDetails(orderId: string) {
+  try {
+    // Ye order fetch karne ka API call hai
+    const res = await fetch(`${API_BASE_URL}/orders/${orderId}`, { cache: 'no-store' });
+    
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    console.error("getOrderDetails error:", e);
+    return null;
+  }
+}
